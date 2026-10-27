@@ -3,32 +3,82 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="theme-color" content="#050607" />
-<meta name="description" content="LDB Lab — private browser-powered AI command terminal for Qwen, Llama, and more." />
-<title>LDB Lab | AI Terminal</title>
+<meta name="theme-color" content="#0B0C0D" />
+<meta name="description" content="LDB Lab AI terminal: chat with Qwen and Llama models that run on your own device, in the browser." />
+<title>AI Terminal | LDB Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{color-scheme:dark;--bg:#050607;--bar:#090b0e;--text:#c4ceda;--muted:#899bad;--accent:#7ca9d4;--error:#d58c91;--line:#29394c}
-*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Consolas,"Cascadia Mono","Lucida Console",monospace;font-size:14px}body{overflow:hidden}.shell{width:100vw;height:100dvh;display:flex;flex-direction:column;background:var(--bg)}.top{height:34px;flex:none;display:flex;align-items:center;border-bottom:1px solid #26384c;background:var(--bar);user-select:none}.terminal-icon{width:15px;height:15px;border:1px solid #758da8;margin-left:12px;display:grid;place-items:center;color:var(--accent);font-size:10px}.appname{margin-left:10px;font:12px 'Segoe UI',Arial,sans-serif;color:#c5ceda}.stretch{flex:1}.state{display:flex;align-items:center;gap:7px;margin-right:12px;font:11px 'Segoe UI',Arial,sans-serif;color:var(--muted)}.led{width:6px;height:6px;background:#b3a2be;border-radius:50%}.led.ok{background:var(--accent)}.winbuttons{height:100%;display:flex}.winbuttons span{display:grid;place-items:center;width:43px;font:13px 'Segoe UI',sans-serif;color:#8394aa;border-left:1px solid #26384c}.winbuttons span:last-child{color:#bfcbd9}main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:20px 22px 8px;overflow-wrap:anywhere;scrollbar-color:#405a76 var(--bg)}.logo{margin:0 0 15px;color:var(--accent);font-size:clamp(6px,1.28vw,14px);line-height:1.15;white-space:pre;font-weight:700;overflow-x:auto}.intro{white-space:pre-line;font-size:13px;line-height:1.75;margin:0 0 20px;color:var(--muted)}.intro strong{color:var(--text)}.entry{margin:0 0 13px}.promptline{color:var(--accent);font-size:14px;white-space:pre-wrap;line-height:1.55}.bodyline{font-size:14px;line-height:1.55;white-space:pre-wrap;margin:5px 0;color:var(--text)}.bodyline.dim{color:var(--muted)}.bodyline.error{color:var(--error)}.bodyline.assistant{color:var(--text)}.bodyline.assistant:before{content:'ldb-ai> ';color:var(--accent)}.progress{margin:8px 0;height:3px;background:#233449;max-width:420px}.progress>div{height:100%;width:0;background:var(--accent);transition:width .18s}.progress:not(.visible){display:none}.inputbar{flex:none;display:flex;align-items:baseline;gap:8px;min-height:45px;padding:3px 22px 15px;background:var(--bg)}.inputbar label{flex:none;color:var(--accent);white-space:nowrap}.inputbar input{flex:1;width:20px;min-width:0;background:none;border:0;outline:0;box-shadow:none;border-radius:0;color:var(--text);font:14px Consolas,"Cascadia Mono",monospace;caret-color:var(--accent);padding:0}.inputbar input::placeholder{color:#758aa3;opacity:1}.inputbar button{display:none}.foot{flex:none;display:flex;align-items:center;gap:18px;min-height:26px;padding:5px 22px;border-top:1px solid #203247;background:var(--bar);font:11px Consolas,monospace;color:#8495a9}.foot .right{margin-left:auto}.foot span{white-space:nowrap}.kbd{color:#c4d0df}.sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}.context-menu{display:none;position:fixed;z-index:10;min-width:270px;background:#111820;border:1px solid #37516e;padding:6px;box-shadow:0 8px 36px #000a}.context-menu.open{display:block}.context-menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text);font:13px Consolas,monospace;padding:9px;cursor:pointer}.context-menu button:hover{background:#1d2b3d}.context-menu button:disabled{opacity:.4}.context-menu hr{border:0;border-top:1px solid #37516e}.hint{color:var(--muted)}.think{margin:5px 0;color:var(--muted);font-size:13px}.think summary{cursor:pointer;color:#8aa0b6;list-style:none}.think summary::-webkit-details-marker{display:none}.think summary:before{content:'▸ '}.think[open] summary:before{content:'▾ '}.think pre{white-space:pre-wrap;margin:4px 0 0 14px;font:inherit;border-left:1px solid var(--line);padding-left:10px;max-height:260px;overflow:auto}.attach{color:var(--accent)}.drop{display:none;position:fixed;inset:0;z-index:20;background:#050607d9;border:2px dashed var(--accent);place-items:center;font-size:16px;color:var(--accent)}.drop.on{display:grid}.stats{color:#62758a;font-size:12px;margin-top:2px}.spin{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px;font-size:14px;line-height:1.55}.spin .g{color:#d4a27f;width:1ch;display:inline-block;text-align:center}.spin .v{background:linear-gradient(90deg,#7ca9d4 0%,#7ca9d4 40%,#e6eef7 50%,#7ca9d4 60%,#7ca9d4 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.2s linear infinite}.spin .m{color:#62758a;font-size:12px}@keyframes shimmer{from{background-position:100% 0}to{background-position:-150% 0}}.bodyline.streaming:after{content:'';display:inline-block;width:.55em;height:1.05em;margin-left:2px;vertical-align:-2px;background:var(--accent);animation:blink 1s steps(1) infinite}@keyframes blink{50%{opacity:0}}.bodyline.assistant.empty:before{content:''}@media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--accent);background:none}.bodyline.streaming:after{animation:none}}@media(max-width:650px){main{padding:15px 12px 5px}.inputbar{padding:5px 12px 12px}.inputbar label,.inputbar input,.promptline,.bodyline{font-size:12px}.logo{font-size:6px}.foot{padding:4px 12px;font-size:10px}.foot .right{display:none}.winbuttons{display:none}}
+/* LDB Lab dark theme (same tokens as the Lab site) */
+:root{color-scheme:dark;--bg:#0B0C0D;--term:#0F1112;--s3:#23272A;--ln:rgba(255,255,255,.08);--ln2:rgba(255,255,255,.14);--ink:#F2F4F5;--text:#BFC7CC;--t2:#A3ADB4;--t3:#8A949B;--mint:#8FC3BA;--mint-hi:#BFE3DC;--red:#F06262;
+ --sans:"Manrope",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;background:var(--bg);color:var(--text);font:400 14px/1.65 var(--mono);-webkit-font-smoothing:antialiased}
+body{overflow:hidden}
+.shell{width:100vw;height:100dvh;display:flex;flex-direction:column;background:var(--term)}
+.top{height:46px;flex:none;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--ln);background:var(--term);user-select:none;font:500 12px var(--sans);color:var(--t3)}
+.dots{display:flex;gap:6px}.dots i{display:block;width:10px;height:10px;border-radius:50%;background:var(--s3)}
+.title{flex:1;text-align:center;font-family:var(--mono);font-weight:400}
+.state{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.04em}
+.led{width:6px;height:6px;border-radius:50%;background:var(--s3);box-shadow:0 0 0 1px var(--ln2)}.led.ok{background:var(--mint);box-shadow:0 0 8px rgba(143,195,186,.6)}
+main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px 24px 8px;overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:var(--s3) transparent}
+.nf{display:flex;align-items:center;gap:30px;margin:6px 0 18px}
+.nf canvas{width:140px;height:140px;flex:none}
+.nfi{white-space:pre;line-height:1.7;font-size:13px}
+.hi{color:var(--ink)}.dimc{color:var(--t3)}.mint{color:var(--mint)}
+.intro{white-space:pre-line;font-size:13px;line-height:1.75;margin:0 0 18px;color:var(--t3)}.intro strong{color:var(--ink);font-weight:500}
+.entry{margin:0 0 12px}
+.promptline{color:var(--ink);white-space:pre-wrap}.promptline .ps1{color:var(--mint)}
+.bodyline{line-height:1.65;white-space:pre-wrap;margin:4px 0;color:var(--text)}
+.bodyline.dim{color:var(--t3)}.bodyline.error{color:var(--red)}
+.bodyline.assistant{color:var(--ink)}.bodyline.assistant:before{content:'\25CF  ';color:var(--mint)}
+.attach{color:var(--mint-hi)}
+.progress{margin:8px 0;height:2px;background:var(--s3);max-width:420px;border-radius:2px;overflow:hidden}.progress>div{height:100%;width:0;background:var(--mint);transition:width .18s}.progress:not(.visible){display:none}
+.inputbar{flex:none;display:flex;align-items:baseline;gap:10px;min-height:46px;padding:6px 24px 14px;background:var(--term)}
+.inputbar label{flex:none;color:var(--mint);white-space:nowrap}
+.inputbar input{flex:1;width:20px;min-width:0;background:none;border:0;outline:0;box-shadow:none;border-radius:0;color:var(--ink);font:inherit;caret-color:var(--mint);padding:0}
+.inputbar button{display:none}
+.foot{flex:none;display:flex;align-items:center;gap:18px;min-height:30px;padding:5px 24px;border-top:1px solid var(--ln);background:var(--term);font:400 11px var(--mono);color:var(--t3);letter-spacing:.02em}
+.foot .right{margin-left:auto}.foot span{white-space:nowrap}.foot span span{color:var(--t2)}
+.sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}
+.context-menu{display:none;position:fixed;z-index:10;min-width:250px;background:#121415;border:1px solid var(--ln2);border-radius:12px;padding:6px;box-shadow:0 24px 60px -20px #000}
+.context-menu.open{display:block}
+.context-menu button{display:block;width:100%;text-align:left;border:0;border-radius:8px;background:none;color:var(--text);font:400 13px var(--mono);padding:9px 10px;cursor:pointer}
+.context-menu button:hover{background:rgba(255,255,255,.06);color:var(--ink)}.context-menu button:disabled{opacity:.4}
+.context-menu hr{border:0;border-top:1px solid var(--ln)}
+.think{margin:4px 0;color:var(--t3);font-size:13px}.think summary{cursor:pointer;color:var(--t3);list-style:none}.think summary::-webkit-details-marker{display:none}.think summary:before{content:'\25B8  '}.think[open] summary:before{content:'\25BE  '}
+.think pre{white-space:pre-wrap;margin:4px 0 0 4px;font:inherit;border-left:1px solid var(--ln2);padding-left:12px;max-height:260px;overflow:auto;color:var(--t3)}
+.drop{display:none;position:fixed;inset:0;z-index:20;background:rgba(11,12,13,.88);border:1px dashed var(--mint);border-radius:16px;margin:10px;place-items:center;font:500 15px var(--sans);color:var(--mint)}.drop.on{display:grid}
+.stats{color:#6E787F;font-size:12px;margin-top:2px}
+/* working indicator: the Lab sphere, spinning, with a shimmering verb */
+.spin{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
+.spin canvas{width:22px;height:22px;flex:none}
+.spin .v{background:linear-gradient(90deg,var(--t3) 0%,var(--t3) 38%,var(--ink) 50%,var(--t3) 62%,var(--t3) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.2s linear infinite}
+.spin .m{color:#6E787F;font-size:12px}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:-150% 0}}
+.bodyline.streaming:after{content:'';display:inline-block;width:.55em;height:1.05em;margin-left:2px;vertical-align:-2px;background:var(--mint);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.bodyline.assistant.empty:before{content:''}
+@media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--t2);background:none}.bodyline.streaming:after{animation:none}}
+@media(max-width:650px){main{padding:14px 14px 6px}.inputbar{padding:6px 14px 12px}.inputbar label,.inputbar input,.promptline,.bodyline{font-size:13px}.nf{gap:16px}.nf canvas{width:92px;height:92px}.nfi{font-size:11px}.foot{padding:4px 14px;font-size:10px}.foot .right,.title{display:none}}
 </style>
 </head>
 <body>
 <div class="shell">
-  <header class="top"><span class="terminal-icon" aria-hidden="true">&gt;_</span><span class="appname">LDB Lab — Command Terminal</span><div class="stretch"></div><div class="state"><span id="led" class="led"></span><span id="state">NOT LOADED</span></div><div class="winbuttons" aria-hidden="true"><span>─</span><span>□</span><span>×</span></div></header>
-  <main id="screen" role="log" aria-label="Terminal output" aria-live="polite"><pre class="logo">██╗     ██████╗ ██████╗     ██╗      █████╗ ██████╗
-██║     ██╔══██╗██╔══██╗    ██║     ██╔══██╗██╔══██╗
-██║     ██║  ██║██████╔╝    ██║     ███████║██████╔╝
-██║     ██║  ██║██╔══██╗    ██║     ██╔══██║██╔══██╗
-███████╗██████╔╝██████╔╝    ███████╗██║  ██║██████╔╝
-╚══════╝╚═════╝ ╚═════╝     ╚══════╝╚═╝  ╚═╝╚═════╝</pre><div class="intro"><strong>LDB LAB COMMAND TERMINAL [Version 2.1]</strong>
-(c) LDB Lab. Browser-based AI workspace.
-
-WebGPU local inference  |  Qwen / Llama  |  GitHub Pages
-Type <strong>/help</strong> for commands, <strong>/models</strong> to list models, <strong>/load</strong> to initialize AI.
-<strong>/upload</strong> (or drag and drop, or paste) attaches files to your next prompt.
-
+  <header class="top"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="title">luis@ldb-lab: ~/ai</span><div class="state"><span id="led" class="led"></span><span id="state">NOT LOADED</span></div></header>
+  <main id="screen" role="log" aria-label="Terminal output" aria-live="polite"><div class="nf"><canvas id="logo" aria-hidden="true"></canvas><div class="nfi"><span class="hi">luis</span>@<span class="hi">ldb-lab</span>
+<span class="dimc">-------------</span>
+<span class="dimc">App</span>      LDB-Lab AI Terminal 2.1
+<span class="dimc">Runtime</span>  WebLLM + WebGPU, on this device
+<span class="dimc">Models</span>   Qwen 3 / Qwen 2.5 / Llama 3.2
+<span class="dimc">Host</span>     GitHub Pages
+<span class="dimc">Shell</span>    ldb-ai
+<span class="dimc">Theme</span>    steel</div></div><div class="intro">Type <strong>/help</strong> for commands, <strong>/models</strong> to list models, <strong>/load</strong> to start one.
+<strong>/upload</strong>, drag and drop, or paste attaches files to your next prompt.
 </div></main>
-  <form id="form" class="inputbar"><label for="input">C:\LDB-Lab&gt;</label><input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="" autofocus aria-label="Terminal command"/><button type="submit" id="send">EXECUTE</button></form>
-  <footer class="foot"><span>WEBGPU: <span id="gpu">CHECKING</span></span><span>MODEL: <span id="active">NONE</span></span><span>THINKING: <span id="thinkState">OFF</span></span><span>FILES: <span id="fileCount">0</span></span><span class="right">↑↓ HISTORY &nbsp; TAB COMPLETE &nbsp; CTRL+C STOP &nbsp; CTRL+L CLEAR</span></footer>
+  <form id="form" class="inputbar"><label for="input">luis@ldb-lab:~$</label><input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="" autofocus aria-label="Terminal command"/><button type="submit" id="send">Run</button></form>
+  <footer class="foot"><span>WEBGPU <span id="gpu">CHECKING</span></span><span>MODEL <span id="active">NONE</span></span><span>THINKING <span id="thinkState">OFF</span></span><span>FILES <span id="fileCount">0</span></span><span class="right">↑↓ history · tab complete · ctrl+c stop · ctrl+l clear</span></footer>
 </div>
 <input type="file" id="file" multiple hidden/><div id="drop" class="drop" aria-hidden="true">Drop files to attach them to your next prompt</div>
 <div id="context" class="context-menu" role="menu"><button id="load">Load selected model</button><button id="stop" disabled>Stop generation</button><button id="upload">Attach files…</button><button id="reset">Clear terminal</button><hr/><button id="openModels">Choose model…</button><select id="model" class="sr-only" aria-label="Model selector"><option value="">Checking catalog…</option></select></div>
@@ -58,7 +108,7 @@ function save(){try{localStorage.setItem('ldb-terminal',JSON.stringify(cfg))}cat
 let lib=null,engine=null,active=null,busy=false,loading=false,cancelRequested=false,history=[],historyPos=0,messages=[],files=[],lastStats='';
 
 // ---------- output ----------
-function add(kind,message){const root=document.createElement('div');root.className='entry';const content=document.createElement('div');content.className=kind==='prompt'?'promptline':`bodyline ${kind}`;content.textContent=kind==='prompt'?`C:\\LDB-Lab> ${message}`:message;root.appendChild(content);screen.appendChild(root);scroll();return content;}
+function add(kind,message){const root=document.createElement('div');root.className='entry';const content=document.createElement('div');content.className=kind==='prompt'?'promptline':`bodyline ${kind}`;if(kind==='prompt'){const ps=document.createElement('span');ps.className='ps1';ps.textContent='luis@ldb-lab:~$ ';content.append(ps,message)}else content.textContent=message;root.appendChild(content);screen.appendChild(root);scroll();return content;}
 function scroll(){screen.scrollTop=screen.scrollHeight}
 function status(t,ok=false){$('state').textContent=t;$('led').classList.toggle('ok',ok)}
 function controls(){const isBusy=busy||loading;$('load').disabled=isBusy;$('stop').disabled=!busy;modelSelect.disabled=isBusy;$('send').disabled=isBusy}
@@ -73,9 +123,9 @@ function record(id){return lib?.prebuiltAppConfig.model_list.find(m=>m.model_id=
 function windowSize(id){return record(id)?.overrides?.context_window_size||4096}
 function isThinkingModel(id){return /qwen3/i.test(id||'')}
 
-async function initLibrary(){try{lib=await import(CDN);const available=new Set(lib.prebuiltAppConfig.model_list.map(m=>m.model_id));modelSelect.replaceChildren();for(const [id,label] of preferred){if(!available.has(id))continue;const option=document.createElement('option');option.value=id;option.textContent=label;modelSelect.appendChild(option)}if(!modelSelect.options.length){for(const m of lib.prebuiltAppConfig.model_list.filter(m=>/Qwen|Llama/.test(m.model_id)).slice(0,16)){const option=document.createElement('option');option.value=m.model_id;option.textContent=m.model_id;modelSelect.appendChild(option)}}if(!modelSelect.options.length)throw Error('No compatible model entries in current catalog.');if(cfg.model&&available.has(cfg.model))modelSelect.value=cfg.model;let cached=[];try{for(const o of modelSelect.options)if(await lib.hasModelInCache(o.value))cached.push(o.textContent)}catch{}add('dim',`Found ${modelSelect.options.length} compatible models. Selected: ${modelSelect.selectedOptions[0].textContent}. Type /load to start, or /models to choose.`+(cached.length?`\nAlready downloaded (loads fast): ${cached.join(', ')}`:''));foot()}catch(e){modelSelect.replaceChildren();const o=document.createElement('option');o.textContent='Model catalog unavailable';o.value='';modelSelect.appendChild(o);add('error','Cannot load WebLLM library: '+fmt(e.message)+'. Check internet access, reload the page and try again.')}}
+async function initLibrary(){try{lib=await import(CDN);const available=new Set(lib.prebuiltAppConfig.model_list.map(m=>m.model_id));modelSelect.replaceChildren();for(const [id,label] of preferred){if(!available.has(id))continue;const option=document.createElement('option');option.value=id;option.textContent=label;modelSelect.appendChild(option)}if(!modelSelect.options.length){for(const m of lib.prebuiltAppConfig.model_list.filter(m=>/Qwen|Llama/.test(m.model_id)).slice(0,16)){const option=document.createElement('option');option.value=m.model_id;option.textContent=m.model_id;modelSelect.appendChild(option)}}if(!modelSelect.options.length)throw Error('No compatible model entries in current catalog.');if(cfg.model&&available.has(cfg.model))modelSelect.value=cfg.model;let cached=[];try{for(const o of modelSelect.options)if(await lib.hasModelInCache(o.value))cached.push(o.textContent)}catch{}add('dim',`Found ${modelSelect.options.length} model${modelSelect.options.length===1?"":"s"}. Selected: ${modelSelect.selectedOptions[0].textContent}. Type /load to start, or /models to choose.`+(cached.length?`\nAlready downloaded (loads fast): ${cached.join(', ')}`:''));foot()}catch(e){modelSelect.replaceChildren();const o=document.createElement('option');o.textContent='Model catalog unavailable';o.value='';modelSelect.appendChild(o);add('error','Cannot load WebLLM library: '+fmt(e.message)+'. Check internet access, reload the page and try again.')}}
 async function gpuCheck(){if(!('gpu' in navigator)){$('gpu').textContent='UNAVAILABLE';add('error','WebGPU is unavailable. Use an up-to-date desktop Chrome or Edge with GPU support over HTTPS.');return}try{const adapter=await navigator.gpu.requestAdapter();$('gpu').textContent=adapter?'AVAILABLE':'NO ADAPTER';if(!adapter)add('error','No WebGPU adapter was detected; check graphics acceleration settings.')}catch{$('gpu').textContent='UNAVAILABLE'}}
-async function loadModel(){if(loading||busy)return;if(!lib){add('error','Model library is still unavailable. Reload the page to retry.');return}const id=modelSelect.value;if(!id){add('error','Select a model first with /model.');return}if(active===id&&engine){add('dim',`${id} is already loaded.`);return}if(!navigator.gpu){add('error','WebGPU is required to load browser AI models.');return}loading=true;controls();status('LOADING');const e=add('dim',`Preparing ${id}…`);const progress=document.createElement('div');progress.className='progress visible';const bar=document.createElement('div');progress.appendChild(bar);e.parentElement.appendChild(progress);try{const callback=(p)=>{e.textContent=fmt(p.text||'Loading model…');if(typeof p.progress==='number')bar.style.width=Math.max(0,Math.min(100,p.progress*100))+'%';scroll()};if(engine){await engine.unload();engine=null;active=null}engine=await lib.CreateMLCEngine(id,{initProgressCallback:callback});active=id;cfg.model=id;save();messages=[];$('active').textContent=id;status('READY',true);e.textContent=`Ready: ${id}. Context window ${windowSize(id)} tokens.`+(isThinkingModel(id)?` Thinking is ${cfg.think?'ON':'OFF'} (/think to toggle).`:'')+' Type a prompt below.'}catch(err){engine=null;active=null;$('active').textContent='none';status('LOAD FAILED');add('error','Model failed to load: '+fmt(err.message)+'. Try a smaller model, verify WebGPU, and ensure there is enough free GPU memory.')}finally{progress.remove();loading=false;controls();foot();input.focus()}}
+async function loadModel(){if(loading||busy)return;if(!lib){add('error','Model library is still unavailable. Reload the page to retry.');return}const id=modelSelect.value;if(!id){add('error','Select a model first with /model.');return}if(active===id&&engine){add('dim',`${id} is already loaded.`);return}if(!navigator.gpu){add('error','WebGPU is required to load browser AI models.');return}loading=true;controls();status('LOADING');const e=add('dim',`Preparing ${id}…`);const progress=document.createElement('div');progress.className='progress visible';const bar=document.createElement('div');progress.appendChild(bar);e.parentElement.appendChild(progress);const lsp=spinner(e.parentElement,'Loading model','');try{const callback=(p)=>{e.textContent=fmt(p.text||'Loading model…');if(typeof p.progress==='number')bar.style.width=Math.max(0,Math.min(100,p.progress*100))+'%';scroll()};if(engine){await engine.unload();engine=null;active=null}engine=await lib.CreateMLCEngine(id,{initProgressCallback:callback});active=id;cfg.model=id;save();messages=[];$('active').textContent=id;status('READY',true);e.textContent=`Ready: ${id}. Context window ${windowSize(id)} tokens.`+(isThinkingModel(id)?` Thinking is ${cfg.think?'ON':'OFF'} (/think to toggle).`:'')+' Type a prompt below.'}catch(err){engine=null;active=null;$('active').textContent='none';status('LOAD FAILED');add('error','Model failed to load: '+fmt(err.message)+'. Try a smaller model, verify WebGPU, and ensure there is enough free GPU memory.')}finally{lsp.done();progress.remove();loading=false;controls();foot();input.focus()}}
 
 // ---------- files ----------
 const TEXT_EXT=/\.(txt|md|markdown|csv|tsv|json|jsonl|xml|html?|css|js|mjs|ts|tsx|jsx|py|r|sql|sh|bat|ps1|yml|yaml|toml|ini|cfg|log|c|h|cpp|hpp|cs|java|kt|go|rs|rb|php|swift|tex|srt|vtt)$/i;
@@ -97,15 +147,27 @@ function fileBlock(budget){if(!files.length)return {text:'',note:''};let left=bu
 function fitHistory(budget){let out=[],used=0;for(let i=messages.length-2;i>=0;i-=2){const pair=[messages[i],messages[i+1]];const t=tok(pair[0].content)+tok(pair[1].content)+8;if(used+t>budget)break;out=pair.concat(out);used+=t}return {msgs:out,dropped:(messages.length-out.length)/2}}
 function splitThink(t){const open=t.indexOf('<think>');if(open<0)return {think:'',answer:t,thinking:false};const close=t.indexOf('</think>',open);if(close<0)return {think:t.slice(open+7),answer:t.slice(0,open),thinking:true};return {think:t.slice(open+7,close),answer:(t.slice(0,open)+t.slice(close+8)),thinking:false}}
 
-// ---------- working indicator: a cycling glyph, a shimmering verb, elapsed time and tokens ----------
-const GLYPHS=['·','✢','✳','✶','✻','✽','✻','✶','✳','✢'];
-const VERBS=['Pondering','Considering','Working','Processing','Composing','Reasoning','Mulling','Computing','Synthesizing','Deliberating'];
+// ---------- the Lab sphere: points spread evenly over a ball (golden-angle spiral), turning ----------
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-function spinner(parent,verb){const el=document.createElement('div');el.className='spin';el.setAttribute('role','status');const g=document.createElement('span'),v=document.createElement('span'),m=document.createElement('span');g.className='g';v.className='v';m.className='m';el.append(g,v,m);parent.appendChild(el);
- let i=0,t0=performance.now(),tokens=0,label=verb||VERBS[Math.floor(Math.random()*VERBS.length)];
- const draw=()=>{g.textContent=reduced?'✻':GLYPHS[i++%GLYPHS.length];v.textContent=label+'…';const s=Math.floor((performance.now()-t0)/1000);m.textContent=`(${s<60?s+'s':Math.floor(s/60)+'m '+(s%60)+'s'}${tokens?' · ↓ '+tokens.toLocaleString()+' tokens':''} · ctrl+c to stop)`};
- draw();const timer=setInterval(draw,120);
- return {set verb(x){label=x},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
+function ballPoints(n){const p=[],ga=Math.PI*(3-Math.sqrt(5));for(let i=0;i<n;i++){const y=1-(i/(n-1))*2,r=Math.sqrt(1-y*y),th=ga*i;p.push([Math.cos(th)*r,y,Math.sin(th)*r])}return p}
+const SPHERES=new Set();let sphereLoop=false;
+function sphere(canvas,{points=360,speed=.38,dot=1,alpha=.8}={}){const dpr=Math.min(devicePixelRatio||1,2),size=canvas.clientWidth||140;canvas.width=size*dpr;canvas.height=size*dpr;
+ const o={c:canvas,x:canvas.getContext('2d'),s:size,dpr,rot:Math.random()*6,speed,pts:ballPoints(points),dot,alpha};
+ draw(o);if(!reduced){SPHERES.add(o);if(!sphereLoop){sphereLoop=true;let last=performance.now();requestAnimationFrame(function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;for(const q of SPHERES){if(!q.c.isConnected){SPHERES.delete(q);continue}q.rot+=q.speed*dt;draw(q)}if(SPHERES.size)requestAnimationFrame(tick);else sphereLoop=false})}}
+ return o;
+ function draw(o){const x=o.x,s=o.s,R=s*.42,cx=s/2,cy=s/2,tilt=.38,cr=Math.cos(o.rot),sr=Math.sin(o.rot),ct=Math.cos(tilt),st=Math.sin(tilt);x.setTransform(o.dpr,0,0,o.dpr,0,0);x.clearRect(0,0,s,s);
+  const pr=o.pts.map(p=>{const X=p[0]*cr+p[2]*sr,Z=-p[0]*sr+p[2]*cr,Y=p[1],Y2=Y*ct-Z*st,Z2=Y*st+Z*ct,k=2.6/(2.6+Z2);return [cx+X*R*k,cy+Y2*R*k,Z2]}).sort((a,b)=>b[2]-a[2]);
+  for(const p of pr){const d=(1-p[2])/2;x.fillStyle='rgba(255,255,255,'+(.12+d*o.alpha).toFixed(3)+')';x.beginPath();x.arc(p[0],p[1],(.5+d*1.1)*o.dot,0,6.283);x.fill()}}}
+sphere($('logo'));
+
+// ---------- working indicator: a small fast sphere, a shimmering verb, elapsed time and tokens ----------
+const VERBS=['Pondering','Considering','Working','Processing','Composing','Reasoning','Mulling','Computing','Synthesizing','Deliberating'];
+function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElement('div');el.className='spin';el.setAttribute('role','status');const c=document.createElement('canvas'),v=document.createElement('span'),m=document.createElement('span');c.setAttribute('aria-hidden','true');v.className='v';m.className='m';el.append(c,v,m);parent.appendChild(el);
+ sphere(c,{points:110,speed:2.4,dot:.55,alpha:.88});
+ let t0=performance.now(),tokens=0,label=verb||VERBS[Math.floor(Math.random()*VERBS.length)];
+ const draw=()=>{v.textContent=label+'…';const s=Math.floor((performance.now()-t0)/1000);m.textContent=`(${s<60?s+'s':Math.floor(s/60)+'m '+(s%60)+'s'}${tokens?' · ↓ '+tokens.toLocaleString()+' tokens':''}${hint?' · '+hint:''})`};
+ draw();const timer=setInterval(draw,250);
+ return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
@@ -163,7 +225,7 @@ case '/export':download('ldb-lab-chat.json',JSON.stringify({model:active,exporte
 case '/stop':void stop();break;
 case '/cache':(async()=>{if(!lib){add('error','Library not loaded.');return}const rows=[];for(const o of modelSelect.options){let c=false;try{c=await lib.hasModelInCache(o.value)}catch{}rows.push(`${c?'[downloaded]':'[ -- ]      '} ${o.textContent}`)}let est='';try{const e=await navigator.storage.estimate();est=`\nBrowser storage used: ${kb(e.usage||0)} of ${kb(e.quota||0)}`}catch{}add('dim',rows.join('\n')+est)})();break;
 case '/purge':(async()=>{if(!lib||busy||loading)return;const opts=Array.from(modelSelect.options);const o=param?opts.find(o=>o.textContent.toLowerCase().includes(param.toLowerCase())||o.value.toLowerCase().includes(param.toLowerCase())):modelSelect.selectedOptions[0];if(!o){add('error','No matching model.');return}if(o.value===active){await engine.unload();engine=null;active=null;$('active').textContent='NONE';status('NOT LOADED')}try{await lib.deleteModelAllInfoInCache(o.value);add('dim',`Deleted ${o.textContent} from this browser.`)}catch(e){add('error','Could not delete: '+fmt(e.message))}})();break;
-case '/about':add('dim','LDB Lab AI Terminal v2.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
+case '/about':add('dim','LDB-Lab AI Terminal 2.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
 default:add('error',`Unknown command: ${cmd}. Enter /help.`)
 }}
 $('form').addEventListener('submit',e=>{e.preventDefault();const raw=input.value.trim();if(!raw)return;if(busy||loading)return;input.value='';add('prompt',raw);history.push(raw);historyPos=history.length;if(raw.startsWith('/'))runCommand(raw);else void ask(raw)});

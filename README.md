@@ -1,6 +1,6 @@
 # LDB Lab — Command Terminal v2.1
 
-Full-window Windows Command Prompt–inspired interface. The ASCII `LDB LAB` banner appears on startup. Local AI uses WebLLM and WebGPU in supported browsers.
+Full-window terminal in the LDB Lab style, opening with the Lab's neofetch and sphere. Local AI uses WebLLM and WebGPU in supported browsers.
 
 ## Publish
 
@@ -26,8 +26,4 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 
 ## Theme
 
-The retained original terminal palette is in `:root` at the top of `index.html`. Exact live LDB Lab source CSS was not accessible during this revision, so change the variables there if your deployed site's current palette differs. Layout is full viewport, no card border, no toolbar or dashboard widgets.
-
-## Color theme
-
-The terminal canvas is near-black (`#050607`), with blue accents (`#7ca9d4`) and silver text (`#c4ceda`). It contains no green terminal accents. These are a blue/silver interpretation of the LDB Lab look; confirm exact hex values against your site stylesheet if pixel-perfect identity is required.
+Matches the LDB Lab site's dark theme: background `#0B0C0D` / terminal `#0F1112`, text `#BFC7CC`, headings `#F2F4F5`, muted `#8A949B`, mint accent `#8FC3BA`, Geist Mono and Manrope. The start screen is the Lab's neofetch: the rotating sphere of points. While a model works, a small fast-spinning version of that sphere sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
