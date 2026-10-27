@@ -119,6 +119,7 @@ function kb(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/10485
 function tok(s){return Math.ceil(String(s).length/3.5)}
 
 // ---------- model facts ----------
+function modelName(id){const o=[...modelSelect.options].find(o=>o.value===id);return o?o.textContent.replace(/ \(.*\)$/,''):id}
 function record(id){return lib?.prebuiltAppConfig.model_list.find(m=>m.model_id===id)}
 function windowSize(id){return record(id)?.overrides?.context_window_size||4096}
 function isThinkingModel(id){return /qwen3/i.test(id||'')}
@@ -188,7 +189,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  const root=document.createElement('div');root.className='entry';screen.appendChild(root);
  const det=document.createElement('details');det.className='think';det.hidden=true;const sum=document.createElement('summary');sum.textContent='Thinking…';const pre=document.createElement('pre');det.append(sum,pre);
  const answer=document.createElement('div');answer.className='bodyline assistant empty';answer.textContent='';
- const stats=document.createElement('div');stats.className='stats';root.append(det,answer,stats);const sp=spinner(root,thinking?'Thinking':null);let deltas=0;scroll();
+ const stats=document.createElement('div');stats.className='stats';root.append(det,answer,stats);const sp=spinner(root,thinking?'Thinking':null,modelName(active)+' · ctrl+c to stop');let deltas=0;scroll();
  let text='',finish=null,usage=null;const t0=performance.now();
  try{const req={messages:turn,stream:true,temperature:cfg.temp,max_tokens:reserve,stream_options:{include_usage:true}};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
   const stream=await engine.chat.completions.create(req);
@@ -200,7 +201,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
   else if(finish==='length'&&(p.thinking||!ans)){answer.className='bodyline error';answer.textContent=`[Ran out of tokens ${p.thinking?'while still thinking':'before answering'}: the ${reserve}-token reply limit was used up.] Try /think off for a direct answer, raise the limit with /tokens 2048, or ask a narrower question.`}
   else if(ans){if(finish==='length')answer.textContent=ans+'\n[Cut off at the '+reserve+'-token limit. Type "continue" or raise /tokens.]';messages.push({role:'user',content:question+(sentFiles.length?`\n(attached: ${sentFiles.join(', ')})`:'')},{role:'assistant',content:ans})}
   else{answer.textContent='[No text returned by model]'}
-  const secs=(performance.now()-t0)/1000,n=usage?.completion_tokens;lastStats=n?`${n} tokens in ${secs.toFixed(1)} s (${(n/secs).toFixed(1)} tok/s), prompt ${usage.prompt_tokens}`:`${secs.toFixed(1)} s`;stats.textContent=lastStats}
+  const secs=(performance.now()-t0)/1000,n=usage?.completion_tokens;lastStats=`${modelName(active)} · `+(n?`${n} tokens in ${secs.toFixed(1)} s (${(n/secs).toFixed(1)} tok/s), prompt ${usage.prompt_tokens}`:`${secs.toFixed(1)} s`);stats.textContent=lastStats}
  catch(e){answer.className='bodyline error';answer.textContent=(text?splitThink(text).answer+'\n':'')+'[Generation error] '+fmt(e.message)+(/context|window|too long/i.test(e.message)?' Use /reset to clear the conversation.':'')}
  finally{sp.done();answer.classList.remove('streaming','empty');busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);input.focus()}}
 async function stop(){if(!busy)return;cancelRequested=true;try{await engine.interruptGenerate?.()}catch{}}
