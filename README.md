@@ -14,7 +14,7 @@ Use Enter to submit, up/down arrows for command history, Tab to complete a comma
 
 ## Files
 
-`/upload`, drag and drop, or paste attaches files to the next prompt: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere. Long files are cut to fit the model's context window (4,096 tokens for most of these models, roughly 14,000 characters shared with the conversation), and the terminal says when that happens. Images are refused: these small models cannot see.
+`/upload`, drag and drop, or paste attaches files to the conversation: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere, and they stay attached until `/unattach`, `/reset` or `/clear`. A file that fits the model's context window (4,096 tokens for most of these models) is sent whole. A longer one is split into short passages, and for each question the passages that best match its words (BM25 keyword ranking) are sent, in page order and labelled with their page numbers; the terminal lists which pages were used. Images are refused: these small models cannot see.
 
 ## Thinking (Qwen 3)
 
