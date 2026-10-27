@@ -1,6 +1,6 @@
 # LDB Lab — Command Terminal v2.1
 
-Full-window terminal in the LDB Lab style, opening with the Lab's neofetch and sphere. Local AI uses WebLLM and WebGPU in supported browsers.
+Full-window terminal in the LDB Lab style. The ASCII `LDB LAB` banner appears on startup. Local AI uses WebLLM and WebGPU in supported browsers.
 
 ## Publish
 
@@ -26,4 +26,4 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 
 ## Theme
 
-Matches the LDB Lab site's dark theme: background `#0B0C0D` / terminal `#0F1112`, text `#BFC7CC`, headings `#F2F4F5`, muted `#8A949B`, mint accent `#8FC3BA`, Geist Mono and Manrope. The start screen is the Lab's neofetch: the rotating sphere of points. While a model works, a small fast-spinning version of that sphere sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
+Matches the LDB Lab site's dark theme: background `#0B0C0D` / terminal `#0F1112`, text `#BFC7CC`, headings `#F2F4F5`, muted `#8A949B`, mint accent `#8FC3BA`, Geist Mono and Manrope. The start screen keeps the ASCII banner. While a model works, a small fast-spinning version of the Lab's point sphere sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
