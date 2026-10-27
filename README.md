@@ -1,4 +1,4 @@
-# LDB Lab — Command Terminal v2.0
+# LDB Lab — Command Terminal v2.1
 
 Full-window Windows Command Prompt–inspired interface. The ASCII `LDB LAB` banner appears on startup. Local AI uses WebLLM and WebGPU in supported browsers.
 
@@ -8,9 +8,17 @@ Upload `index.html` to the `terminal/` folder of your GitHub Pages `lab` reposit
 
 ## Commands
 
-`/help`, `/models`, `/model qwen`, `/load`, `/status`, `/system your instructions`, `/reset`, `/clear`, `/stop`, `/export`, `/about`
+`/help`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
 
-Use Enter to submit, up/down arrows for command history, Ctrl+L to clear. Right click for a small optional command menu. All ordinary text is sent to the selected loaded model.
+Use Enter to submit, up/down arrows for command history, Tab to complete a command, Ctrl+C to stop a reply, Ctrl+L to clear. Right click for a small menu. All ordinary text is sent to the loaded model. Settings (model, thinking, limits, system instruction) are remembered in this browser.
+
+## Files
+
+`/upload`, drag and drop, or paste attaches files to the next prompt: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere. Long files are cut to fit the model's context window (4,096 tokens for most of these models, roughly 14,000 characters shared with the conversation), and the terminal says when that happens. Images are refused: these small models cannot see.
+
+## Thinking (Qwen 3)
+
+Qwen 3 models reason inside `<think>` before answering. On a 0.6B or 1.7B model that reasoning often uses up the whole reply limit, so no answer appears. Thinking is therefore **off by default** (WebLLM's `enable_thinking: false`). With `/think on`, the reasoning is shown collapsed above the answer and the reply limit is raised to at least 2,048 tokens. If a reply still runs out, the terminal says so instead of stopping silently.
 
 ## Requirements and limitations
 
