@@ -169,7 +169,7 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 // facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
-function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return `Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot look up live prices, news or anything after your training data; say so instead of guessing.`}
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return `Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`}
 
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
