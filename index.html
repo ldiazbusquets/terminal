@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="theme-color" content="#0B0C0D" />
+<meta name="theme-color" content="#050607" />
 <meta name="description" content="LDB Lab AI terminal: chat with Qwen and Llama models that run on your own device, in the browser." />
 <title>AI Terminal | LDB Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* LDB Lab dark theme (same tokens as the Lab site) */
-:root{color-scheme:dark;--bg:#0B0C0D;--term:#0F1112;--s3:#23272A;--ln:rgba(255,255,255,.08);--ln2:rgba(255,255,255,.14);--ink:#F2F4F5;--text:#BFC7CC;--t2:#A3ADB4;--t3:#8A949B;--mint:#8FC3BA;--mint-hi:#BFE3DC;--red:#F06262;
+:root{color-scheme:dark;--bg:#050607;--term:#050607;--s3:#233449;--ln:#1d2a38;--ln2:#29394c;--ink:#e2e9f1;--text:#c4ceda;--t2:#a9b7c6;--t3:#899bad;--mint:#7ca9d4;--mint-hi:#a9c8e6;--red:#d58c91;
  --sans:"Manrope",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;--mono:"Geist Mono",ui-monospace,Menlo,Consolas,monospace}
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;background:var(--bg);color:var(--text);font:400 14px/1.65 var(--mono);-webkit-font-smoothing:antialiased}
@@ -21,9 +21,9 @@ body{overflow:hidden}
 .dots{display:flex;gap:6px}.dots i{display:block;width:10px;height:10px;border-radius:50%;background:var(--s3)}
 .title{flex:1;text-align:center;font-family:var(--mono);font-weight:400}
 .state{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.04em}
-.led{width:6px;height:6px;border-radius:50%;background:var(--s3);box-shadow:0 0 0 1px var(--ln2)}.led.ok{background:var(--mint);box-shadow:0 0 8px rgba(143,195,186,.6)}
+.led{width:6px;height:6px;border-radius:50%;background:var(--s3);box-shadow:0 0 0 1px var(--ln2)}.led.ok{background:var(--mint);box-shadow:0 0 8px rgba(124,169,212,.6)}
 main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px 24px 8px;overflow-wrap:anywhere;scrollbar-width:thin;scrollbar-color:var(--s3) transparent}
-.logo{margin:4px 0 16px;color:var(--ink);font:400 clamp(6px,1.28vw,14px)/1.0 "Cascadia Mono",Consolas,Menlo,"DejaVu Sans Mono","Liberation Mono",monospace;white-space:pre;overflow-x:auto}
+.logo{margin:4px 0 16px;color:var(--mint);font:400 clamp(6px,1.28vw,14px)/1.0 "Cascadia Mono",Consolas,Menlo,"DejaVu Sans Mono","Liberation Mono",monospace;white-space:pre;overflow-x:auto}
 .hi{color:var(--ink)}.dimc{color:var(--t3)}.mint{color:var(--mint)}
 .intro{white-space:pre-line;font-size:13px;line-height:1.75;margin:0 0 18px;color:var(--t3)}.intro strong{color:var(--ink);font-weight:500}
 .entry{margin:0 0 12px}
@@ -40,20 +40,20 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px 
 .foot{flex:none;display:flex;align-items:center;gap:18px;min-height:30px;padding:5px 24px;border-top:1px solid var(--ln);background:var(--term);font:400 11px var(--mono);color:var(--t3);letter-spacing:.02em}
 .foot .right{margin-left:auto}.foot span{white-space:nowrap}.foot span span{color:var(--t2)}
 .sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}
-.context-menu{display:none;position:fixed;z-index:10;min-width:250px;background:#121415;border:1px solid var(--ln2);border-radius:12px;padding:6px;box-shadow:0 24px 60px -20px #000}
+.context-menu{display:none;position:fixed;z-index:10;min-width:250px;background:#0d131a;border:1px solid var(--ln2);border-radius:12px;padding:6px;box-shadow:0 24px 60px -20px #000}
 .context-menu.open{display:block}
 .context-menu button{display:block;width:100%;text-align:left;border:0;border-radius:8px;background:none;color:var(--text);font:400 13px var(--mono);padding:9px 10px;cursor:pointer}
 .context-menu button:hover{background:rgba(255,255,255,.06);color:var(--ink)}.context-menu button:disabled{opacity:.4}
 .context-menu hr{border:0;border-top:1px solid var(--ln)}
 .think{margin:4px 0;color:var(--t3);font-size:13px}.think summary{cursor:pointer;color:var(--t3);list-style:none}.think summary::-webkit-details-marker{display:none}.think summary:before{content:'\25B8  '}.think[open] summary:before{content:'\25BE  '}
 .think pre{white-space:pre-wrap;margin:4px 0 0 4px;font:inherit;border-left:1px solid var(--ln2);padding-left:12px;max-height:260px;overflow:auto;color:var(--t3)}
-.drop{display:none;position:fixed;inset:0;z-index:20;background:rgba(11,12,13,.88);border:1px dashed var(--mint);border-radius:16px;margin:10px;place-items:center;font:500 15px var(--sans);color:var(--mint)}.drop.on{display:grid}
-.stats{color:#6E787F;font-size:12px;margin-top:2px}
+.drop{display:none;position:fixed;inset:0;z-index:20;background:rgba(5,6,7,.9);border:1px dashed var(--mint);border-radius:16px;margin:10px;place-items:center;font:500 15px var(--sans);color:var(--mint)}.drop.on{display:grid}
+.stats{color:#62758a;font-size:12px;margin-top:2px}
 /* working indicator: the Lab sphere, spinning, with a shimmering verb */
 .spin{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
 .spin canvas{width:22px;height:22px;flex:none}
 .spin .v{background:linear-gradient(90deg,var(--t3) 0%,var(--t3) 38%,var(--ink) 50%,var(--t3) 62%,var(--t3) 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.2s linear infinite}
-.spin .m{color:#6E787F;font-size:12px}
+.spin .m{color:#62758a;font-size:12px}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:-150% 0}}
 .bodyline.streaming:after{content:'';display:inline-block;width:.55em;height:1.05em;margin-left:2px;vertical-align:-2px;background:var(--mint);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -157,7 +157,7 @@ function sphere(canvas,{points=360,speed=.38,dot=1,alpha=.8}={}){const dpr=Math.
  return o;
  function draw(o){const x=o.x,s=o.s,R=s*.42,cx=s/2,cy=s/2,tilt=.38,cr=Math.cos(o.rot),sr=Math.sin(o.rot),ct=Math.cos(tilt),st=Math.sin(tilt);x.setTransform(o.dpr,0,0,o.dpr,0,0);x.clearRect(0,0,s,s);
   const pr=o.pts.map(p=>{const X=p[0]*cr+p[2]*sr,Z=-p[0]*sr+p[2]*cr,Y=p[1],Y2=Y*ct-Z*st,Z2=Y*st+Z*ct,k=2.6/(2.6+Z2);return [cx+X*R*k,cy+Y2*R*k,Z2]}).sort((a,b)=>b[2]-a[2]);
-  for(const p of pr){const d=(1-p[2])/2;x.fillStyle='rgba(255,255,255,'+(.12+d*o.alpha).toFixed(3)+')';x.beginPath();x.arc(p[0],p[1],(.5+d*1.1)*o.dot,0,6.283);x.fill()}}}
+  for(const p of pr){const d=(1-p[2])/2;x.fillStyle='rgba(196,214,234,'+(.12+d*o.alpha).toFixed(3)+')';x.beginPath();x.arc(p[0],p[1],(.5+d*1.1)*o.dot,0,6.283);x.fill()}}}
 
 // ---------- working indicator: a small fast sphere, a shimmering verb, elapsed time and tokens ----------
 const VERBS=['Pondering','Considering','Working','Processing','Composing','Reasoning','Mulling','Computing','Synthesizing','Deliberating'];
