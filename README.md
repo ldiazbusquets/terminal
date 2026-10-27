@@ -26,4 +26,4 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 
 ## Theme
 
-Matches the LDB Lab site's dark theme: background `#0B0C0D` / terminal `#0F1112`, text `#BFC7CC`, headings `#F2F4F5`, muted `#8A949B`, mint accent `#8FC3BA`, Geist Mono and Manrope. The start screen keeps the ASCII banner. While a model works, a small fast-spinning version of the Lab's point sphere sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
+Silver-blue on black, the LDB Lab dark theme: background `#050607`, silver text `#c4ceda` (highlights `#e2e9f1`), muted `#899bad`, blue accent `#7ca9d4`, errors `#d58c91`; Geist Mono and Manrope. The start screen keeps the ASCII banner (in the blue accent). While a model works, a small fast-spinning sphere of silver-blue points sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
