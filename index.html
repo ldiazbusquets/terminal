@@ -168,6 +168,9 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  draw();const timer=setInterval(draw,250);
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
+// facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return `Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot look up live prices, news or anything after your training data; say so instead of guessing.`}
+
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
  // budget: the window, minus the reply, minus the system prompt and question; files take up to 70% of what is left
@@ -177,7 +180,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  const fb=fileBlock(Math.floor(room*0.7));room-=tok(fb.text);
  const hist=fitHistory(Math.max(0,room));
  const userContent=fb.text+question;
- const turn=[...hist.msgs,{role:'user',content:userContent}];if(cfg.system.trim())turn.unshift({role:'system',content:cfg.system});
+ const turn=[...hist.msgs,{role:'user',content:userContent}];turn.unshift({role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()});
  if(fb.note)add('dim',fb.note);
  if(hist.dropped>0)add('dim',`(Oldest ${hist.dropped} exchange${hist.dropped>1?'s':''} left out to fit the ${win}-token window.)`);
  const sentFiles=files.map(f=>f.name);files=[];foot();
