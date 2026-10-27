@@ -19,3 +19,7 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 ## Theme
 
 The retained original terminal palette is in `:root` at the top of `index.html`. Exact live LDB Lab source CSS was not accessible during this revision, so change the variables there if your deployed site's current palette differs. Layout is full viewport, no card border, no toolbar or dashboard widgets.
+
+## Color theme
+
+The terminal canvas is near-black (`#050607`), with blue accents (`#7ca9d4`) and silver text (`#c4ceda`). It contains no green terminal accents. These are a blue/silver interpretation of the LDB Lab look; confirm exact hex values against your site stylesheet if pixel-perfect identity is required.
