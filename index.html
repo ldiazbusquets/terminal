@@ -149,11 +149,16 @@ addEventListener('paste',e=>{const fs=[...(e.clipboardData?.files||[])];if(fs.le
 const STOP=new Set('a an and are as at be but by can do does for from has have how i in is it its me my of on or our so than that the their them there these they this to was we what when where which who why will with you your about into more most also any all not no many much does did'.split(' '));
 function stem(w){return w.length>4&&/(ches|shes|sses|xes)$/.test(w)?w.slice(0,-2):w.length>3&&/ies$/.test(w)?w.slice(0,-3)+'y':w.length>3&&/[^s]s$/.test(w)?w.slice(0,-1):w}
 function terms(t){return (t.toLowerCase().match(/[a-z0-9][a-z0-9.\-']*/g)||[]).map(w=>w.replace(/[.\-']+$/,'')).filter(w=>w.length>1&&!STOP.has(w)).map(stem)}
-function passages(f){if(f.chunks)return f.chunks;const out=[];let page=null,buf='',start=0,pos=0;const flush=()=>{if(buf.trim())out.push({text:buf.trim(),page:start,pos:out.length});buf=''};
- for(const para of f.text.split(/\n\s*\n/)){const m=para.match(/^\[page (\d+)\]/);if(m)page=+m[1];if(!buf)start=page;if(buf.length+para.length>800)flush(),start=page;buf+=(buf?'\n\n':'')+para;if(buf.length>1600){flush()}}flush();
+function passages(f){if(f.chunks)return f.chunks;const out=[];let page=null,buf='',start=null;const flush=()=>{if(buf.trim())out.push({text:buf.trim(),page:start,pos:out.length});buf='';start=page};
+ // PDF text arrives as one block per page, so passages are built line by line: about 500 characters, ending at a sentence where possible
+ for(const line of f.text.split('\n')){const m=line.match(/^\[page (\d+)\]\s*$/);if(m){flush();page=+m[1];start=page;continue}if(!buf)start=page;buf+=(buf?'\n':'')+line;if((buf.length>500&&/[.!?:;]\s*$/.test(line))||buf.length>900)flush()}flush();
  const N=out.length,df=new Map();for(const c of out){c.tf=new Map();const ts=terms(c.text);c.len=ts.length;for(let i=0;i<ts.length;i++){const w=ts[i];c.tf.set(w,(c.tf.get(w)||0)+1);if(i)c.tf.set(ts[i-1]+' '+w,(c.tf.get(ts[i-1]+' '+w)||0)+1)}for(const w of c.tf.keys())df.set(w,(df.get(w)||0)+1)}
  const avg=out.reduce((a,c)=>a+c.len,0)/Math.max(1,N);f.chunks=out;f.df=df;f.avg=avg;return out}
-function rank(f,q){const cs=passages(f),N=cs.length,qt=terms(q),qs=[...new Set(qt.concat(qt.slice(1).map((w,i)=>qt[i]+' '+w)))];return cs.map(c=>{let sc=0;for(const w of qs){const n=c.tf.get(w);if(!n)continue;const idf=Math.log(1+(N-f.df.get(w)+.5)/(f.df.get(w)+.5));sc+=idf*n*2.2/(n+1.2*(.25+.75*c.len/f.avg))}return {c,sc}}).sort((a,b)=>b.sc-a.sc)}
+function rank(f,q){const cs=passages(f),N=cs.length,qt=terms(q),qs=[...new Set(qt.concat(qt.slice(1).map((w,i)=>qt[i]+' '+w)))],uniq=[...new Set(qt)];
+ // "how many / how much" questions: prefer passages where a number sits right before one of the question's words ("24 Branches")
+ const count=/\b(how many|how much|number of|amount of|total)\b/i.test(q),near=count&&uniq.length?new RegExp('\\b\\d[\\d,.]*%?\\s+(?:[a-z]+\\s+){0,2}(?:'+uniq.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','i'):null;
+ return cs.map(c=>{let sc=0,hit=0;for(const w of qs){const n=c.tf.get(w);if(!n)continue;if(!w.includes(' '))hit++;const idf=Math.log(1+(N-f.df.get(w)+.5)/(f.df.get(w)+.5));sc+=idf*n*2.2/(n+1.2*(.25+.75*c.len/f.avg))}
+  sc*=0.5+0.5*hit/Math.max(1,uniq.length);if(near&&near.test(c.text))sc*=1.6;return {c,sc}}).sort((a,b)=>b.sc-a.sc)}
 function fileBlock(budget,question){if(!files.length)return {text:'',note:''};const each=Math.floor(budget/files.length);let parts=[],notes=[];
  for(const f of files){if(f.tokens<=each){parts.push(`<file name="${f.name}">\n${f.text}\n</file>`);continue}
   const ranked=rank(f,question).filter(x=>x.sc>0);let pick=[],used=0;for(const x of ranked){const t=tok(x.c.text)+6;if(used+t>each)continue;pick.push(x.c);used+=t;if(used>each*.95)break}
@@ -233,18 +238,21 @@ async function quoteCmd(list){if(!list.length){add('dim','Usage: /quote NVDA  (a
 // ---------- maths and logic: ask the model to work it out before answering ----------
 function looksMath(q){return /\d/.test(q)&&/(how much|how many|cost|costs|price|total|sum|percent|%|[+*\/=^]|\d\s*-\s*\d|solve|calculate|compute|ratio|equation|probability|odds|average|more than|less than|times|per cent|interest|return|rate|divided|multiplied|square|root)/i.test(q)||/\b(puzzle|riddle|logic|trick question|prove)\b/i.test(q)}
 
+// a small model can reason in circles: the same sentences again and again, or one "Wait, …" after another
+function looping(t){const ss=t.split(/(?<=[.!?])\s+/).map(x=>x.trim().toLowerCase().replace(/\s+/g,' ')).filter(x=>x.length>40),seen=new Map();for(const x of ss){const n=(seen.get(x)||0)+1;if(n>=3)return true;seen.set(x,n)}return (t.match(/(^|\n)\s*(wait|hmm|but wait)\b/gi)||[]).length>=6}
+
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
  // budget: the window, minus the reply, minus the system prompt and question; files take up to 70% of what is left
- const reserve=Math.min(thinking?Math.max(cfg.maxTokens,2048):cfg.maxTokens,Math.floor(win*0.6));   // thinking needs room to finish
+ const reserve=Math.min(thinking?Math.max(cfg.maxTokens,1536):cfg.maxTokens,Math.floor(win*0.6)),thinkCap=Math.max(400,reserve-450);   // thinking needs room to finish
  let room=win-reserve-tok(cfg.system)-tok(question)-40;
  if(room<0){add('error',`That prompt is too long for this model (window ${win} tokens). Shorten it or lower /tokens.`);busy=false;controls();status('READY',true);return}
- const fb=fileBlock(Math.floor(room*0.7),question);room-=tok(fb.text);
+ const fb=fileBlock(Math.floor(room*(files.length?0.85:0.7)),question);room-=tok(fb.text);
  const hist=fitHistory(Math.max(0,room));
  const steps=cfg.steps&&!thinking&&looksMath(question);
  if(steps)add('dim','Maths or logic question: asking the model to work it out step by step first (/steps off to stop this).');
  if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote and a ticker (e.g. /quote NVDA for Nvidia) fetches one for it to use.');
- const userContent=fb.text+question+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
+ const userContent=fb.text+question+(fb.text?'\n\n(Answer from the attached file text above. Quote the sentence that answers the question and give its page. If the text does not contain the answer, say so plainly.)':'')+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
  const turn=[...hist.msgs,{role:'user',content:userContent}];turn.unshift({role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()});
  if(fb.note)add('dim',fb.note);
  if(hist.dropped>0)add('dim',`(Oldest ${hist.dropped} exchange${hist.dropped>1?'s':''} left out to fit the ${win}-token window.)`);
@@ -257,10 +265,16 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  let text='',finish=null,usage=null;const t0=performance.now();
  try{const req={messages:turn,stream:true,temperature:cfg.temp,max_tokens:reserve,stream_options:{include_usage:true}};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
   const stream=await engine.chat.completions.create(req);
-  for await(const chunk of stream){if(cancelRequested)break;const c=chunk.choices?.[0];if(c?.delta?.content){text+=c.delta.content;sp.tokens=++deltas}if(c?.finish_reason)finish=c.finish_reason;if(chunk.usage)usage=chunk.usage;const p=splitThink(text);if(p.think.trim()){det.hidden=false;pre.textContent=p.think.trim();sum.textContent=p.thinking?'Reasoning (live)':'Thought process (click to show)';if(p.thinking){det.open=true;pre.scrollTop=pre.scrollHeight}else det.open=false}const shown=p.answer.trim();render(answer,shown);answer.classList.toggle('empty',!shown);answer.classList.toggle('streaming',!!shown);if(p.thinking)sp.verb='Thinking';else if(shown)sp.verb='Writing';scroll()}
+  let circled=false;for await(const chunk of stream){if(cancelRequested)break;const c=chunk.choices?.[0];if(c?.delta?.content){text+=c.delta.content;sp.tokens=++deltas;const q=splitThink(text);if(q.thinking&&(deltas>thinkCap||(deltas%40===0&&looping(q.think)))){circled=true;try{await engine.interruptGenerate?.()}catch{}break}}if(c?.finish_reason)finish=c.finish_reason;if(chunk.usage)usage=chunk.usage;const p=splitThink(text);if(p.think.trim()){det.hidden=false;pre.textContent=p.think.trim();sum.textContent=p.thinking?'Reasoning (live)':'Thought process (click to show)';if(p.thinking){det.open=true;pre.scrollTop=pre.scrollHeight}else det.open=false}const shown=p.answer.trim();render(answer,shown);answer.classList.toggle('empty',!shown);answer.classList.toggle('streaming',!!shown);if(p.thinking)sp.verb='Thinking';else if(shown)sp.verb='Writing';scroll()}
+  if(circled&&!cancelRequested){   // reasoning went in circles or ran long: keep it visible, then ask again for a direct answer
+   const p0=splitThink(text);pre.textContent=p0.think.trim();sum.textContent='Thought process (stopped: '+(deltas>thinkCap?'too long':'going in circles')+')';det.open=false;
+   const note=document.createElement('div');note.className='bodyline dim';note.textContent='Reasoning was '+(deltas>thinkCap?'running too long':'going in circles')+', so the model was asked to answer directly.';root.insertBefore(note,answer);
+   sp.verb='Writing';text='';finish=null;const req2={...req,max_tokens:Math.min(800,reserve),extra_body:{enable_thinking:false}};
+   for await(const chunk of await engine.chat.completions.create(req2)){if(cancelRequested)break;const c=chunk.choices?.[0];if(c?.delta?.content){text+=c.delta.content;sp.tokens=++deltas}if(c?.finish_reason)finish=c.finish_reason;if(chunk.usage)usage=chunk.usage;const shown=splitThink(text).answer.trim();render(answer,shown);answer.classList.toggle('empty',!shown);answer.classList.toggle('streaming',!!shown);scroll()}
+   det.hidden=false}
   sp.done();answer.classList.remove('streaming','empty');
   const p=splitThink(text),ans=p.answer.trim();
-  if(p.think.trim()){sum.textContent=p.thinking?'Thought process (cut off)':'Thought process (click to show)';det.open=false}
+  if(p.think.trim()&&!circled){sum.textContent=p.thinking?'Thought process (cut off)':'Thought process (click to show)';det.open=false}
   const tail=t=>{const n=document.createElement('span');n.className='note';n.textContent='\n'+t;answer.appendChild(n)};
   if(cancelRequested){render(answer,ans||'');tail('[Generation stopped]')}
   else if(finish==='length'&&(p.thinking||!ans)){answer.className='bodyline error';answer.textContent=`[Ran out of tokens ${p.thinking?'while still thinking':'before answering'}: the ${reserve}-token reply limit was used up.] Try /think off for a direct answer, raise the limit with /tokens 2048, or ask a narrower question.`}

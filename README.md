@@ -14,7 +14,7 @@ Use Enter to submit, up/down arrows for command history, Tab to complete a comma
 
 ## Files
 
-`/upload`, drag and drop, or paste attaches files to the conversation: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere, and they stay attached until `/unattach`, `/reset` or `/clear`. A file that fits the model's context window (4,096 tokens for most of these models) is sent whole. A longer one is split into short passages, and for each question the passages that best match its words (BM25 keyword ranking) are sent, in page order and labelled with their page numbers; the terminal lists which pages were used. Images are refused: these small models cannot see.
+`/upload`, drag and drop, or paste attaches files to the conversation: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere, and they stay attached until `/unattach`, `/reset` or `/clear`. A file that fits the model's context window (4,096 tokens for most of these models) is sent whole. A longer one is split into short passages (about 500 characters), and for each question the passages that best match its words are sent (BM25 keyword ranking that also favours passages matching every word of the question, and, for "how many" questions, a number next to one of its words), in page order and labelled with their page numbers; the terminal lists which pages were used. Images are refused: these small models cannot see.
 
 ## Live quotes
 
@@ -25,6 +25,9 @@ The models have no internet access, so `/quote TICKER` (up to 8 at once) fetches
 Answers render Markdown (bold, lists, headings, code blocks) and maths (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, via KaTeX loaded on first use); prices such as "$0.05 or $0.10" stay as text. When a question looks like maths or a puzzle and thinking is off, the terminal asks the model to work it out step by step, end with an "Answer:" line, and say if a needed number is missing (`/steps off` to stop).
 
 ## Thinking (Qwen 3)
+
+If the reasoning starts going in circles (the same sentences again and again) or runs past its share of the reply limit, the terminal stops it, keeps it visible, and asks the model for a direct answer.
+
 
 Qwen 3 models reason inside `<think>` before answering. On a 0.6B or 1.7B model that reasoning often uses up the whole reply limit, so no answer appears. Thinking is therefore **off by default** (WebLLM's `enable_thinking: false`). With `/think on`, the reasoning is shown collapsed above the answer and the reply limit is raised to at least 2,048 tokens. If a reply still runs out, the terminal says so instead of stopping silently.
 
