@@ -55,6 +55,13 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 .bodyline.streaming:after{content:'';display:inline-block;width:.55em;height:1.05em;margin-left:2px;vertical-align:-2px;background:var(--mint);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 .bodyline.assistant.empty:before{content:''}
+.bodyline.assistant code{font:inherit;background:#0f1822;border:1px solid var(--ln);border-radius:4px;padding:0 4px;color:var(--ink)}
+.bodyline.assistant pre.code{display:block;white-space:pre;overflow-x:auto;background:#0b121a;border:1px solid var(--ln2);border-radius:6px;padding:10px 12px;margin:6px 0;color:var(--text);font-size:13px}
+.bodyline.assistant pre.code code{background:none;border:0;padding:0}
+.bodyline.assistant strong{color:#ffffff;font-weight:600}.bodyline.assistant .h{color:var(--mint);font-weight:600}
+.bodyline.assistant .mathd{display:block;margin:6px 0 6px 2ch;overflow-x:auto}.bodyline.assistant .katex{font-size:1.08em;color:var(--ink)}
+.bodyline.assistant .note{color:var(--t3)}
+.quote{white-space:pre;overflow-x:auto;color:var(--text)}.quote .up{color:#8fd1a6}.quote .dn{color:var(--red)}.quote .tk{color:var(--ink);font-weight:500}
 @media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--t2);background:none}.bodyline.streaming:after{animation:none}}
 @media(max-width:1050px){.foot .right{display:none}}
 @media(max-width:650px){main{padding:14px 14px 6px}.inputbar{padding:6px 14px 12px}.inputbar label,.inputbar input,.promptline,.bodyline{font-size:13px}.logo{font-size:6px}.foot{padding:4px 14px;font-size:10px}.foot .right{display:none}}
@@ -93,11 +100,11 @@ const preferred=[
  ['Qwen3-4B-q4f16_1-MLC','Qwen 3 · 4B (needs a strong GPU)'],
  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 · 3B']
 ];
-const COMMANDS=['/help','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
+const COMMANDS=['/help','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
 const $=id=>document.getElementById(id),screen=$('screen'),input=$('input'),modelSelect=$('model'),fileInput=$('file');
 
 // ---------- settings (kept in this browser; nothing leaves it) ----------
-const DEFAULTS={think:false,maxTokens:1024,temp:0.7,system:'You are a helpful and accurate assistant in the LDB Lab AI Terminal. Answer directly and concisely. Say clearly when you are unsure.',model:''};
+const DEFAULTS={think:false,steps:true,keys:{},maxTokens:1024,temp:0.7,system:'You are a helpful and accurate assistant in the LDB Lab AI Terminal. Answer directly and concisely. Say clearly when you are unsure.',model:''};
 let cfg={...DEFAULTS};
 try{Object.assign(cfg,JSON.parse(localStorage.getItem('ldb-terminal')||'{}'))}catch{}
 function save(){try{localStorage.setItem('ldb-terminal',JSON.stringify(cfg))}catch{}}
@@ -183,7 +190,48 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 // facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
-function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return `Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`}
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker.')}
+
+// ---------- rendering the model's Markdown and maths (KaTeX loads on first use) ----------
+const KATEX='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';let katex=null,katexLoading=null;
+function loadKatex(){if(katexLoading)return katexLoading;const l=document.createElement('link');l.rel='stylesheet';l.href=KATEX+'katex.min.css';document.head.appendChild(l);katexLoading=import(KATEX+'katex.mjs').then(m=>{katex=m.default||m}).catch(()=>{katexLoading=null});return katexLoading}
+function esc(t){return t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function mathHtml(src,display){if(!katex){loadKatex();return display?`<span class="mathd"><code>${esc(src)}</code></span>`:`<code>${esc(src)}</code>`}try{return (display?'<span class="mathd">':'')+katex.renderToString(src,{displayMode:display,throwOnError:false,output:'html'})+(display?'</span>':'')}catch{return `<code>${esc(src)}</code>`}}
+function md(t){const keep=[];const hold=h=>`\u0000${keep.push(h)-1}\u0000`;
+ t=t.replace(/```[^\n]*\n?([\s\S]*?)(```|$)/g,(_,c)=>hold(`<pre class="code"><code>${esc(c.replace(/\n$/,''))}</code></pre>`));
+ t=t.replace(/`([^`\n]+)`/g,(_,c)=>hold(`<code>${esc(c)}</code>`));
+ t=t.replace(/\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]/g,(_,a,b)=>hold(mathHtml((a||b).trim(),true)));
+ t=t.replace(/\\\((.+?)\\\)/g,(_,a)=>hold(mathHtml(a.trim(),false)));
+ // $…$ only when it looks like maths, so prices such as "$0.05 or $0.10" stay text
+ t=t.replace(/\$([^$\n]{1,200}?)\$/g,(m,a)=>(/^\d/.test(a)?(/\s$/.test(a)||!/[=^_\\]/.test(a)):!/[a-zA-Z\\^_=]/.test(a))?m:hold(mathHtml(a.trim(),false)));
+ t=esc(t);
+ t=t.replace(/^#{1,6}\s+(.+)$/gm,'<span class="h">$1</span>').replace(/^(\s*)[-*]\s+/gm,'$1• ').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/__(.+?)__/g,'<strong>$1</strong>').replace(/(^|[^*\w])\*([^*\n]+?)\*(?!\*)/g,'$1<em>$2</em>').replace(/^\s*---+\s*$/gm,'');
+ t=t.replace(/\n*(\u0000\d+\u0000)\n*/g,(m,p)=>/^<(pre|span class="mathd")/.test(keep[+p.slice(1,-1)])?p:m);  // no blank lines around blocks
+ t=t.replace(/\n{3,}/g,'\n\n');
+ return t.replace(/\u0000(\d+)\u0000/g,(_,i)=>keep[+i])}
+function render(el,text){el.innerHTML=md(text);if(!katex&&/\$|\\\(|\\\[/.test(text))loadKatex().then(()=>{if(katex&&el.isConnected&&!el.classList.contains('streaming'))el.innerHTML=md(text)})}
+
+// ---------- live market quotes (/quote): fetched by the page, handed to the model ----------
+const quotes=new Map();
+function money(v){return '$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function quoteFacts(){if(!quotes.size)return '';return 'Live market quotes fetched by the terminal (real data):\n'+[...quotes.values()].map(q=>`- ${q.symbol}${q.name?' ('+q.name+')':''}: ${money(q.price)}, ${q.change>=0?'+':''}${q.change.toFixed(2)} (${q.pct>=0?'+':''}${q.pct.toFixed(2)}%) vs previous close ${money(q.prev)}; day range ${money(q.low)} to ${money(q.high)}; as of ${q.asof} (source ${q.source})`).join('\n')+'\n\n'}
+async function fetchJSON(url){const r=await fetch(url);if(r.status===401||r.status===403)throw Error('the API key was refused');if(r.status===429)throw Error('rate limit reached; wait a minute');if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+async function getQuote(sym){const k=cfg.keys||{};
+ if(k.finnhub){const q=await fetchJSON(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(k.finnhub)}`);if(!q||!q.t||!q.c)throw Error('no quote for '+sym+' (check the ticker)');let name='';try{const p=await fetchJSON(`https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(k.finnhub)}`);name=p&&p.name||''}catch{}
+  return {symbol:sym,name,price:q.c,change:q.d??q.c-q.pc,pct:q.dp??(q.c/q.pc-1)*100,prev:q.pc,open:q.o,high:q.h,low:q.l,asof:new Date(q.t*1000).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}),source:'Finnhub'}}
+ if(k.alphavantage){const j=await fetchJSON(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(k.alphavantage)}`);if(j.Note||j.Information)throw Error('Alpha Vantage limit reached (25 requests a day on the free key)');const q=j['Global Quote'];if(!q||!q['05. price'])throw Error('no quote for '+sym+' (check the ticker)');const n=x=>+String(q[x]).replace('%','');
+  return {symbol:sym,name:'',price:n('05. price'),change:n('09. change'),pct:n('10. change percent'),prev:n('08. previous close'),open:n('02. open'),high:n('03. high'),low:n('04. low'),asof:'trading day '+q['07. latest trading day'],source:'Alpha Vantage'}}
+ throw Error('nokey')}
+async function quoteCmd(list){if(!list.length){add('dim','Usage: /quote F  (or several: /quote F GM TSLA). '+(quotes.size?'Quotes the model has now: '+[...quotes.keys()].join(', '):''));return}
+ if(!cfg.keys?.finnhub&&!cfg.keys?.alphavantage){add('dim','Live quotes need a free market-data key, saved only in this browser:\n  1. Get one at https://finnhub.io/register (free, 60 calls a minute)\n  2. Type: /key finnhub YOUR_KEY\nAlpha Vantage also works: /key alphavantage YOUR_KEY (25 calls a day).');return}
+ for(const raw of list.slice(0,8)){const sym=raw.toUpperCase().replace(/[^A-Z0-9.\-]/g,'');if(!sym)continue;const line=add('dim',`Fetching ${sym}…`);
+  try{const q=await getQuote(sym);quotes.set(sym,q);const up=q.change>=0;line.className='bodyline quote';
+   line.innerHTML=`<span class="tk">${esc(q.symbol)}</span>${q.name?'  '+esc(q.name):''}  <span class="tk">${money(q.price)}</span>  <span class="${up?'up':'dn'}">${up?'▲ +':'▼ '}${q.change.toFixed(2)} (${up?'+':''}${q.pct.toFixed(2)}%)</span>\n<span class="note" style="color:var(--t3)">open ${money(q.open)} · high ${money(q.high)} · low ${money(q.low)} · prev close ${money(q.prev)} · ${esc(q.asof)} · ${q.source}</span>`}
+  catch(e){line.className='bodyline error';line.textContent=`${sym}: ${e.message==='nokey'?'no key set':e instanceof TypeError?'the request was blocked or the network is down':e.message}.`}}
+ if(quotes.size)add('dim','The model can now use '+(quotes.size>1?'these quotes':'this quote')+' in your questions until /reset.')}
+
+// ---------- maths and logic: ask the model to work it out before answering ----------
+function looksMath(q){return /\d/.test(q)&&/(how much|how many|cost|costs|price|total|sum|percent|%|[+*\/=^]|\d\s*-\s*\d|solve|calculate|compute|ratio|equation|probability|odds|average|more than|less than|times|per cent|interest|return|rate|divided|multiplied|square|root)/i.test(q)||/\b(puzzle|riddle|logic|trick question|prove)\b/i.test(q)}
 
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
@@ -193,7 +241,10 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  if(room<0){add('error',`That prompt is too long for this model (window ${win} tokens). Shorten it or lower /tokens.`);busy=false;controls();status('READY',true);return}
  const fb=fileBlock(Math.floor(room*0.7),question);room-=tok(fb.text);
  const hist=fitHistory(Math.max(0,room));
- const userContent=fb.text+question;
+ const steps=cfg.steps&&!thinking&&looksMath(question);
+ if(steps)add('dim','Maths or logic question: asking the model to work it out step by step first (/steps off to stop this).');
+ if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote TICKER fetches one for it to use.');
+ const userContent=fb.text+question+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
  const turn=[...hist.msgs,{role:'user',content:userContent}];turn.unshift({role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()});
  if(fb.note)add('dim',fb.note);
  if(hist.dropped>0)add('dim',`(Oldest ${hist.dropped} exchange${hist.dropped>1?'s':''} left out to fit the ${win}-token window.)`);
@@ -206,13 +257,14 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  let text='',finish=null,usage=null;const t0=performance.now();
  try{const req={messages:turn,stream:true,temperature:cfg.temp,max_tokens:reserve,stream_options:{include_usage:true}};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
   const stream=await engine.chat.completions.create(req);
-  for await(const chunk of stream){if(cancelRequested)break;const c=chunk.choices?.[0];if(c?.delta?.content){text+=c.delta.content;sp.tokens=++deltas}if(c?.finish_reason)finish=c.finish_reason;if(chunk.usage)usage=chunk.usage;const p=splitThink(text);if(p.think.trim()){det.hidden=false;pre.textContent=p.think.trim();sum.textContent=p.thinking?'Reasoning (live)':'Thought process (click to show)';if(p.thinking){det.open=true;pre.scrollTop=pre.scrollHeight}else det.open=false}const shown=p.answer.trim();answer.textContent=shown;answer.classList.toggle('empty',!shown);answer.classList.toggle('streaming',!!shown);if(p.thinking)sp.verb='Thinking';else if(shown)sp.verb='Writing';scroll()}
+  for await(const chunk of stream){if(cancelRequested)break;const c=chunk.choices?.[0];if(c?.delta?.content){text+=c.delta.content;sp.tokens=++deltas}if(c?.finish_reason)finish=c.finish_reason;if(chunk.usage)usage=chunk.usage;const p=splitThink(text);if(p.think.trim()){det.hidden=false;pre.textContent=p.think.trim();sum.textContent=p.thinking?'Reasoning (live)':'Thought process (click to show)';if(p.thinking){det.open=true;pre.scrollTop=pre.scrollHeight}else det.open=false}const shown=p.answer.trim();render(answer,shown);answer.classList.toggle('empty',!shown);answer.classList.toggle('streaming',!!shown);if(p.thinking)sp.verb='Thinking';else if(shown)sp.verb='Writing';scroll()}
   sp.done();answer.classList.remove('streaming','empty');
   const p=splitThink(text),ans=p.answer.trim();
   if(p.think.trim()){sum.textContent=p.thinking?'Thought process (cut off)':'Thought process (click to show)';det.open=false}
-  if(cancelRequested){answer.textContent=(ans||'')+'\n[Generation stopped]'}
+  const tail=t=>{const n=document.createElement('span');n.className='note';n.textContent='\n'+t;answer.appendChild(n)};
+  if(cancelRequested){render(answer,ans||'');tail('[Generation stopped]')}
   else if(finish==='length'&&(p.thinking||!ans)){answer.className='bodyline error';answer.textContent=`[Ran out of tokens ${p.thinking?'while still thinking':'before answering'}: the ${reserve}-token reply limit was used up.] Try /think off for a direct answer, raise the limit with /tokens 2048, or ask a narrower question.`}
-  else if(ans){if(finish==='length')answer.textContent=ans+'\n[Cut off at the '+reserve+'-token limit. Type "continue" or raise /tokens.]';messages.push({role:'user',content:question+(sentFiles.length?`\n(attached: ${sentFiles.join(', ')})`:'')},{role:'assistant',content:ans})}
+  else if(ans){render(answer,ans);if(finish==='length')tail('[Cut off at the '+reserve+'-token limit. Type "continue" or raise /tokens.]');messages.push({role:'user',content:question+(sentFiles.length?`\n(attached: ${sentFiles.join(', ')})`:'')},{role:'assistant',content:ans})}
   else{answer.textContent='[No text returned by model]'}
   const secs=(performance.now()-t0)/1000,n=usage?.completion_tokens;lastStats=`${modelName(active)} · `+(n?`${n} tokens in ${secs.toFixed(1)} s (${(n/secs).toFixed(1)} tok/s), prompt ${usage.prompt_tokens}`:`${secs.toFixed(1)} s`);stats.textContent=lastStats}
  catch(e){answer.className='bodyline error';answer.textContent=(text?splitThink(text).answer+'\n':'')+'[Generation error] '+fmt(e.message)+(/context|window|too long/i.test(e.message)?' Use /reset to clear the conversation.':'')}
@@ -222,7 +274,7 @@ function download(filename,data,type){const blob=new Blob([data],{type});const u
 function listModels(){return Array.from(modelSelect.options).map((o,i)=>`${i+1}. ${o.textContent}${o.value===active?' [LOADED]':o.value===modelSelect.value?' [SELECTED]':''}`).join('\n')}
 
 function runCommand(raw){const [cmd,...args]=raw.split(/\s+/);const param=args.join(' ');switch(cmd.toLowerCase()){
-case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
+case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
 case '/models':add('dim',listModels());break;
 case '/model':{if(!param){add('dim','Selected: '+(modelSelect.selectedOptions[0]?.textContent||'none'));break}const q=param.toLowerCase(),opts=Array.from(modelSelect.options);const option=(/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().includes(q)||o.value.toLowerCase().includes(q));if(!option){add('error','No matching model found. Use /models to view choices.');break}modelSelect.value=option.value;cfg.model=option.value;save();foot();add('dim','Selected '+option.textContent+'. Enter /load to download and activate it.');break}
 case '/load':void loadModel();break;
@@ -235,12 +287,19 @@ case '/upload':fileInput.click();add('dim','Choose files… (or drag them onto t
 case '/files':add('dim',files.length?files.map((f,i)=>`${i+1}. ${f.name}  ~${f.tokens.toLocaleString()} tokens`).join('\n')+(active?`\nWindow: ${windowSize(active)} tokens; long files are cut to fit.`:''):'No files attached. Use /upload, drag and drop, or paste.');break;
 case '/cat':{const f=files.find(f=>f.name.toLowerCase().includes(param.toLowerCase()))||(!param&&files[0]);if(!f){add('error','No attached file matches. Use /files.');break}add('dim',`── ${f.name} ──\n`+f.text.slice(0,2000)+(f.text.length>2000?`\n… (${(f.text.length-2000).toLocaleString()} more characters)`:''));break}
 case '/unattach':{if(!param){const n=files.length;files=[];add('dim',`Removed ${n} attached file${n===1?'':'s'}.`)}else{const before=files.length;files=files.filter(f=>!f.name.toLowerCase().includes(param.toLowerCase()));add('dim',`Removed ${before-files.length} file(s).`)}foot();break}
-case '/clear':screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=[];files=[];foot();add('dim','Terminal cleared. Conversation context reset.');break;
-case '/reset':messages=[];files=[];foot();add('dim','Conversation and attached files reset.');break;
+case '/clear':screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=[];files=[];quotes.clear();foot();add('dim','Terminal cleared. Conversation context reset.');break;
+case '/reset':messages=[];files=[];quotes.clear();foot();add('dim','Conversation, attached files and quotes reset.');break;
 case '/export':download('ldb-lab-chat.json',JSON.stringify({model:active,exportedAt:new Date().toISOString(),system:cfg.system,settings:{think:cfg.think,maxTokens:cfg.maxTokens,temp:cfg.temp},messages},null,2),'application/json');add('dim','Exported the current conversation as JSON.');break;
 case '/stop':void stop();break;
 case '/cache':(async()=>{if(!lib){add('error','Library not loaded.');return}const rows=[];for(const o of modelSelect.options){let c=false;try{c=await lib.hasModelInCache(o.value)}catch{}rows.push(`${c?'[downloaded]':'[ -- ]      '} ${o.textContent}`)}let est='';try{const e=await navigator.storage.estimate();est=`\nBrowser storage used: ${kb(e.usage||0)} of ${kb(e.quota||0)}`}catch{}add('dim',rows.join('\n')+est)})();break;
 case '/purge':(async()=>{if(!lib||busy||loading)return;const opts=Array.from(modelSelect.options);const o=param?opts.find(o=>o.textContent.toLowerCase().includes(param.toLowerCase())||o.value.toLowerCase().includes(param.toLowerCase())):modelSelect.selectedOptions[0];if(!o){add('error','No matching model.');return}if(o.value===active){await engine.unload();engine=null;active=null;$('active').textContent='NONE';status('NOT LOADED')}try{await lib.deleteModelAllInfoInCache(o.value);add('dim',`Deleted ${o.textContent} from this browser.`)}catch(e){add('error','Could not delete: '+fmt(e.message))}})();break;
+case '/quote':void quoteCmd(args);break;
+case '/key':{const [svc,key]=args;if(!svc){const k=cfg.keys||{};add('dim',`Market-data keys saved in this browser: Finnhub ${k.finnhub?'set (…'+k.finnhub.slice(-4)+')':'not set'}, Alpha Vantage ${k.alphavantage?'set (…'+k.alphavantage.slice(-4)+')':'not set'}.\nSet: /key finnhub YOUR_KEY · remove: /key clear`);break}
+ if(svc.toLowerCase()==='clear'){cfg.keys={};save();add('dim','Market-data keys removed from this browser.');break}
+ const name={finnhub:'finnhub',alphavantage:'alphavantage','alpha':'alphavantage','av':'alphavantage'}[svc.toLowerCase()];if(!name||!key){add('error','Use /key finnhub YOUR_KEY or /key alphavantage YOUR_KEY.');break}
+ cfg.keys={...(cfg.keys||{}),[name]:key.trim()};save();const last=screen.querySelector('.entry:last-child .promptline');if(last)last.lastChild.textContent=`/key ${svc} ••••${key.slice(-4)}`;history[history.length-1]=`/key ${svc} ••••`;
+ add('dim',`${name==='finnhub'?'Finnhub':'Alpha Vantage'} key saved in this browser only (never sent anywhere except to ${name==='finnhub'?'finnhub.io':'alphavantage.co'}). Try /quote F.`);break}
+case '/steps':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add('error','Use /steps on or /steps off.');break}cfg.steps=v?v==='on':!cfg.steps;save();add('dim',`Step-by-step for maths and logic questions is ${cfg.steps?'ON':'OFF'}.`);break}
 case '/about':add('dim','LDB-Lab AI Terminal 2.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
 default:add('error',`Unknown command: ${cmd}. Enter /help.`)
 }}
