@@ -8,7 +8,7 @@ Upload `index.html` to the `terminal/` folder of your GitHub Pages `lab` reposit
 
 ## Commands
 
-`/help`, `/quote F GM`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
+`/help`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
 
 Use Enter to submit, up/down arrows for command history, Tab to complete a command, Ctrl+C to stop a reply, Ctrl+L to clear. Right click for a small menu. All ordinary text is sent to the loaded model. Settings (model, thinking, limits, system instruction) are remembered in this browser.
 

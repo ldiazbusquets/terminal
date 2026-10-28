@@ -190,7 +190,7 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 // facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
-function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker.')}
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker, for example /quote NVDA for Nvidia.')}
 
 // ---------- rendering the model's Markdown and maths (KaTeX loads on first use) ----------
 const KATEX='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';let katex=null,katexLoading=null;
@@ -222,7 +222,7 @@ async function getQuote(sym){const k=cfg.keys||{};
  if(k.alphavantage){const j=await fetchJSON(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(k.alphavantage)}`);if(j.Note||j.Information)throw Error('Alpha Vantage limit reached (25 requests a day on the free key)');const q=j['Global Quote'];if(!q||!q['05. price'])throw Error('no quote for '+sym+' (check the ticker)');const n=x=>+String(q[x]).replace('%','');
   return {symbol:sym,name:'',price:n('05. price'),change:n('09. change'),pct:n('10. change percent'),prev:n('08. previous close'),open:n('02. open'),high:n('03. high'),low:n('04. low'),asof:'trading day '+q['07. latest trading day'],source:'Alpha Vantage'}}
  throw Error('nokey')}
-async function quoteCmd(list){if(!list.length){add('dim','Usage: /quote F  (or several: /quote F GM TSLA). '+(quotes.size?'Quotes the model has now: '+[...quotes.keys()].join(', '):''));return}
+async function quoteCmd(list){if(!list.length){add('dim','Usage: /quote NVDA  (a ticker is a company\'s stock symbol, e.g. NVDA = Nvidia, AAPL = Apple, TSLA = Tesla; several at once: /quote NVDA AAPL TSLA). '+(quotes.size?'Quotes the model has now: '+[...quotes.keys()].join(', '):''));return}
  if(!cfg.keys?.finnhub&&!cfg.keys?.alphavantage){add('dim','Live quotes need a free market-data key, saved only in this browser:\n  1. Get one at https://finnhub.io/register (free, 60 calls a minute)\n  2. Type: /key finnhub YOUR_KEY\nAlpha Vantage also works: /key alphavantage YOUR_KEY (25 calls a day).');return}
  for(const raw of list.slice(0,8)){const sym=raw.toUpperCase().replace(/[^A-Z0-9.\-]/g,'');if(!sym)continue;const line=add('dim',`Fetching ${sym}…`);
   try{const q=await getQuote(sym);quotes.set(sym,q);const up=q.change>=0;line.className='bodyline quote';
@@ -243,7 +243,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  const hist=fitHistory(Math.max(0,room));
  const steps=cfg.steps&&!thinking&&looksMath(question);
  if(steps)add('dim','Maths or logic question: asking the model to work it out step by step first (/steps off to stop this).');
- if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote TICKER fetches one for it to use.');
+ if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote and a ticker (e.g. /quote NVDA for Nvidia) fetches one for it to use.');
  const userContent=fb.text+question+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
  const turn=[...hist.msgs,{role:'user',content:userContent}];turn.unshift({role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()});
  if(fb.note)add('dim',fb.note);
@@ -298,7 +298,7 @@ case '/key':{const [svc,key]=args;if(!svc){const k=cfg.keys||{};add('dim',`Marke
  if(svc.toLowerCase()==='clear'){cfg.keys={};save();add('dim','Market-data keys removed from this browser.');break}
  const name={finnhub:'finnhub',alphavantage:'alphavantage','alpha':'alphavantage','av':'alphavantage'}[svc.toLowerCase()];if(!name||!key){add('error','Use /key finnhub YOUR_KEY or /key alphavantage YOUR_KEY.');break}
  cfg.keys={...(cfg.keys||{}),[name]:key.trim()};save();const last=screen.querySelector('.entry:last-child .promptline');if(last)last.lastChild.textContent=`/key ${svc} ••••${key.slice(-4)}`;history[history.length-1]=`/key ${svc} ••••`;
- add('dim',`${name==='finnhub'?'Finnhub':'Alpha Vantage'} key saved in this browser only (never sent anywhere except to ${name==='finnhub'?'finnhub.io':'alphavantage.co'}). Try /quote F.`);break}
+ add('dim',`${name==='finnhub'?'Finnhub':'Alpha Vantage'} key saved in this browser only (never sent anywhere except to ${name==='finnhub'?'finnhub.io':'alphavantage.co'}). Try /quote NVDA (Nvidia).`);break}
 case '/steps':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add('error','Use /steps on or /steps off.');break}cfg.steps=v?v==='on':!cfg.steps;save();add('dim',`Step-by-step for maths and logic questions is ${cfg.steps?'ON':'OFF'}.`);break}
 case '/about':add('dim','LDB-Lab AI Terminal 2.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
 default:add('error',`Unknown command: ${cmd}. Enter /help.`)
