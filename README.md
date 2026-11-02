@@ -8,13 +8,17 @@ Upload `index.html` to the `terminal/` folder of your GitHub Pages `lab` reposit
 
 ## Commands
 
-`/help`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
+`/help`, `/read /finance/research.html`, `/compare llama <question>`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
 
 Use Enter to submit, up/down arrows for command history, Tab to complete a command, Ctrl+C to stop a reply, Ctrl+L to clear. Right click for a small menu. All ordinary text is sent to the loaded model. Settings (model, thinking, limits, system instruction) are remembered in this browser.
 
 ## Files
 
 `/upload`, drag and drop, or paste attaches files to the conversation: text, Markdown, CSV, JSON, code and PDF (text layer only, read with pdf.js). Files are read in the browser and never uploaded anywhere, and they stay attached until `/unattach`, `/reset` or `/clear`. A file that fits the model's context window (4,096 tokens for most of these models) is sent whole. A longer one is split into short passages (about 500 characters), and for each question the passages that best match its words are sent (BM25 keyword ranking that also favours passages matching every word of the question, and, for "how many" questions, a number next to one of its words), in page order and labelled with their page numbers; the terminal lists which pages were used. Images are refused: these small models cannot see.
+
+## Reading pages and comparing models
+
+`/read <page>` fetches a page from this site (Finance, Lab, the main site) and attaches its readable text like a file, so the model can answer from it. Other websites mostly block pages from being read by other sites, and the terminal says so. `/compare <model> <question>` sends the question to the loaded model, then briefly loads the other model, asks it the same thing with the same settings and files, shows the two answers side by side, and switches back. Comparisons are not added to the conversation.
 
 ## Live quotes
 

@@ -62,6 +62,7 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 .bodyline.assistant .mathd{display:block;margin:6px 0 6px 2ch;overflow-x:auto}.bodyline.assistant .katex{font-size:1.08em;color:var(--ink)}
 .bodyline.assistant .note{color:var(--t3)}
 .quote{white-space:pre;overflow-x:auto;color:var(--text)}.quote .up{color:#8fd1a6}.quote .dn{color:var(--red)}.quote .tk{color:var(--ink);font-weight:500}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:6px 0}.cmp>div{border-left:1px solid var(--ln2);padding-left:14px;min-width:0}.cmp h4{margin:0 0 6px;font:500 12px var(--mono);color:var(--mint);letter-spacing:.04em}.cmp .bodyline.assistant:before{content:''}@media(max-width:760px){.cmp{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--t2);background:none}.bodyline.streaming:after{animation:none}}
 @media(max-width:1050px){.foot .right{display:none}}
 @media(max-width:650px){main{padding:14px 14px 6px}.inputbar{padding:6px 14px 12px}.inputbar label,.inputbar input,.promptline,.bodyline{font-size:13px}.logo{font-size:6px}.foot{padding:4px 14px;font-size:10px}.foot .right{display:none}}
@@ -100,7 +101,7 @@ const preferred=[
  ['Qwen3-4B-q4f16_1-MLC','Qwen 3 · 4B (needs a strong GPU)'],
  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 · 3B']
 ];
-const COMMANDS=['/help','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
+const COMMANDS=['/help','/read','/compare','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
 const $=id=>document.getElementById(id),screen=$('screen'),input=$('input'),modelSelect=$('model'),fileInput=$('file');
 
 // ---------- settings (kept in this browser; nothing leaves it) ----------
@@ -195,7 +196,7 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 // facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
-function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker, for example /quote NVDA for Nvidia.')}
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing; but when a page's text has been attached (via /read), answer from that text.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker, for example /quote NVDA for Nvidia.')}
 
 // ---------- rendering the model's Markdown and maths (KaTeX loads on first use) ----------
 const KATEX='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';let katex=null,katexLoading=null;
@@ -240,6 +241,52 @@ function looksMath(q){return /\d/.test(q)&&/(how much|how many|cost|costs|price|
 
 // a small model can reason in circles: the same sentences again and again, or one "Wait, …" after another
 function looping(t){const ss=t.split(/(?<=[.!?])\s+/).map(x=>x.trim().toLowerCase().replace(/\s+/g,' ')).filter(x=>x.length>40),seen=new Map();for(const x of ss){const n=(seen.get(x)||0)+1;if(n>=3)return true;seen.set(x,n)}return (t.match(/(^|\n)\s*(wait|hmm|but wait)\b/gi)||[]).length>=6}
+
+// ---------- /read: a page from this site (Finance, Lab, main site) as an attached file ----------
+function pageText(html,url){const doc=new DOMParser().parseFromString(html,'text/html');
+ doc.querySelectorAll('script,style,noscript,svg,canvas,nav,header,footer,form,template,iframe,[aria-hidden="true"],.menu,#menu').forEach(e=>e.remove());
+ const root=doc.querySelector('main,article,#content,.page')||doc.body;if(!root)return {title:url,text:''};
+ root.querySelectorAll('td,th').forEach(e=>e.append(' | '));
+ root.querySelectorAll('p,h1,h2,h3,h4,h5,h6,li,tr,div,section,br,dt,dd,blockquote,pre,figcaption').forEach(e=>e.append('\n'));
+ root.querySelectorAll('h1,h2,h3').forEach(e=>e.prepend('\n## '));
+ const text=(root.textContent||'').replace(/[ \t ]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+ return {title:(doc.title||url).trim(),text}}
+async function readCmd(arg){if(!arg){add('dim','Usage: /read <page>. Pages on this site work, for example /read /finance/reports/nvidia.html or /read https://ldiazbusquets.github.io/lab/. Most other websites block this.');return}
+ let url;try{url=new URL(/^https?:/i.test(arg)?arg:arg.startsWith('/')?arg:'/'+arg,location.origin)}catch{add('error','That does not look like a web address.');return}
+ const line=add('dim','Reading '+url.href+'…');
+ try{const r=await fetch(url.href,{credentials:'omit'});if(!r.ok)throw Error('HTTP '+r.status);const ct=r.headers.get('content-type')||'';
+  const raw=await r.text(),pg=/html/i.test(ct)||/^\s*</.test(raw)?pageText(raw,url.href):{title:url.pathname.split('/').pop()||url.href,text:raw};
+  if(pg.text.length<40){line.className='bodyline error';line.textContent='That page has almost no readable text (it may be built by scripts as it loads).';return}
+  const name=(pg.title.length>60?pg.title.slice(0,57)+'…':pg.title)+' ['+url.pathname+']';
+  files=files.filter(f=>f.name!==name);files.push({name,text:'Source: '+url.href+'\n\n'+pg.text,tokens:tok(pg.text)});foot();
+  line.className='bodyline attach';line.textContent=`Read "${pg.title}" (~${tok(pg.text).toLocaleString()} tokens). It is attached to the conversation like a file; ask about it, or /unattach to remove it.`}
+ catch(e){line.className='bodyline error';line.textContent=(url.origin===location.origin?'Could not read that page ('+fmt(e.message)+').':'That site does not allow other websites to read its pages, so it cannot be read from here. Pages on '+location.host+' work.')}}
+
+// ---------- /compare: one question, two models, side by side ----------
+function findModel(q){const opts=Array.from(modelSelect.options);q=String(q||'').toLowerCase();return (/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().replace(/[\s·]+/g,'').includes(q.replace(/[\s·]+/g,''))||o.value.toLowerCase().includes(q))}
+async function once(question){const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think,reserve=Math.min(thinking?Math.max(cfg.maxTokens,1536):cfg.maxTokens,Math.floor(win*.6));
+ const room=win-reserve-tok(cfg.system)-tok(question)-40,fb=fileBlock(Math.floor(Math.max(0,room)*.85),question),steps=cfg.steps&&!thinking&&looksMath(question);
+ const content=fb.text+question+(fb.text?'\n\n(Answer from the attached file text above. Quote the sentence that answers the question and give its page. If the text does not contain the answer, say so plainly.)':'')+(steps?'\n\n(Work this out step by step, then give the final answer on its own line starting with "Answer:". If a number needed is missing, say so.)':'');
+ const req={messages:[{role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()},{role:'user',content}],temperature:cfg.temp,max_tokens:reserve};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
+ const t0=performance.now(),r=await engine.chat.completions.create(req),secs=(performance.now()-t0)/1000,n=r.usage?.completion_tokens;
+ const p=splitThink(r.choices?.[0]?.message?.content||'');return {answer:p.answer.trim()||'[No answer: the reply limit ran out'+(p.think?' while it was still thinking]':']'),stats:(n?`${n} tokens in ${secs.toFixed(1)} s (${(n/secs).toFixed(1)} tok/s)`:`${secs.toFixed(1)} s`)+(r.choices?.[0]?.finish_reason==='length'?' · cut off':'')}}
+async function compareCmd(args){
+ if(!engine){add('error','Load a model first: /load. Then /compare <other model> <question>.');return}
+ const o=findModel(args[0]),q=args.slice(1).join(' ').trim();
+ if(!o||!q){add('dim','Usage: /compare <model> <question>. The question goes to the loaded model and to the other one, and the answers appear side by side. Example: /compare llama What causes inflation?\n'+listModels());return}
+ if(o.value===active){add('error','That is the model already loaded. Pick a different one (see /models).');return}
+ const A=active,B=o.value;busy=true;cancelRequested=false;controls();
+ const root=document.createElement('div');root.className='entry';const grid=document.createElement('div');grid.className='cmp';root.appendChild(grid);screen.appendChild(root);
+ const col=id=>{const d=document.createElement('div'),h=document.createElement('h4'),a=document.createElement('div'),st=document.createElement('div');h.textContent=modelName(id);a.className='bodyline assistant';st.className='stats';d.append(h,a,st);grid.appendChild(d);return {a,st,d}};
+ const ca=col(A),cb=col(B);scroll();
+ try{status('GENERATING',true);let sp=spinner(ca.d,null,modelName(A));const ra=await once(q);sp.done();render(ca.a,ra.answer);ca.st.textContent=ra.stats;scroll();
+  status('LOADING');sp=spinner(cb.d,'Loading '+modelName(B),'one-off, then '+modelName(A)+' comes back');await engine.reload(B);active=B;sp.done();
+  status('GENERATING',true);sp=spinner(cb.d,null,modelName(B));const rb=await once(q);sp.done();render(cb.a,rb.answer);cb.st.textContent=rb.stats;scroll()}
+ catch(e){const tgt=active===B?cb:ca;tgt.a.className='bodyline error';tgt.a.textContent='[Could not run: '+fmt(e.message)+(active!==B?'. The second model may need more graphics memory than this device has.':'')+']'}
+ finally{grid.querySelectorAll('.spin').forEach(x=>x.remove());
+  if(active!==A){status('LOADING');const sp=spinner(root,'Switching back to '+modelName(A),'');try{await engine.reload(A);active=A}catch(e){add('error','Could not switch back: '+fmt(e.message)+'. Use /load.');engine=null;active=null;$('active').textContent='NONE'}sp.done()}
+  busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);foot();input.focus()}
+ add('dim','Not added to the conversation. Same settings and attached files for both; '+modelName(A)+' is loaded again.')}
 
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
@@ -288,7 +335,7 @@ function download(filename,data,type){const blob=new Blob([data],{type});const u
 function listModels(){return Array.from(modelSelect.options).map((o,i)=>`${i+1}. ${o.textContent}${o.value===active?' [LOADED]':o.value===modelSelect.value?' [SELECTED]':''}`).join('\n')}
 
 function runCommand(raw){const [cmd,...args]=raw.split(/\s+/);const param=args.join(' ');switch(cmd.toLowerCase()){
-case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
+case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
 case '/models':add('dim',listModels());break;
 case '/model':{if(!param){add('dim','Selected: '+(modelSelect.selectedOptions[0]?.textContent||'none'));break}const q=param.toLowerCase(),opts=Array.from(modelSelect.options);const option=(/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().includes(q)||o.value.toLowerCase().includes(q));if(!option){add('error','No matching model found. Use /models to view choices.');break}modelSelect.value=option.value;cfg.model=option.value;save();foot();add('dim','Selected '+option.textContent+'. Enter /load to download and activate it.');break}
 case '/load':void loadModel();break;
@@ -297,6 +344,8 @@ case '/think':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add(
 case '/tokens':{const n=+param;if(!param){add('dim','Reply limit: '+cfg.maxTokens+' tokens');break}if(!(n>=64&&n<=8192)){add('error','Use a number from 64 to 8192.');break}cfg.maxTokens=Math.round(n);save();add('dim',`Reply limit set to ${cfg.maxTokens} tokens.`+(active&&n>windowSize(active)*0.6?` This model\u2019s window is ${windowSize(active)}, so at most ${Math.floor(windowSize(active)*0.6)} will be used.`:''));break}
 case '/temp':{const n=+param;if(!param){add('dim','Temperature: '+cfg.temp);break}if(!(n>=0&&n<=2)){add('error','Use a number from 0 to 2.');break}cfg.temp=n;save();add('dim','Temperature set to '+n+'.');break}
 case '/system':if(param){cfg.system=param;save();messages=[];add('dim','System instruction updated. Conversation context cleared.')}else add('dim',cfg.system);break;
+case '/read':void readCmd(param.trim());break;
+case '/compare':void compareCmd(args);break;
 case '/upload':fileInput.click();add('dim','Choose files… (or drag them onto the terminal, or paste them)');break;
 case '/files':add('dim',files.length?files.map((f,i)=>`${i+1}. ${f.name}  ~${f.tokens.toLocaleString()} tokens`).join('\n')+(active?`\nWindow: ${windowSize(active)} tokens; long files are cut to fit.`:''):'No files attached. Use /upload, drag and drop, or paste.');break;
 case '/cat':{const f=files.find(f=>f.name.toLowerCase().includes(param.toLowerCase()))||(!param&&files[0]);if(!f){add('error','No attached file matches. Use /files.');break}add('dim',`── ${f.name} ──\n`+f.text.slice(0,2000)+(f.text.length>2000?`\n… (${(f.text.length-2000).toLocaleString()} more characters)`:''));break}
