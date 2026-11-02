@@ -62,6 +62,7 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 .bodyline.assistant .mathd{display:block;margin:6px 0 6px 2ch;overflow-x:auto}.bodyline.assistant .katex{font-size:1.08em;color:var(--ink)}
 .bodyline.assistant .note{color:var(--t3)}
 .quote{white-space:pre;overflow-x:auto;color:var(--text)}.quote .up{color:#8fd1a6}.quote .dn{color:var(--red)}.quote .tk{color:var(--ink);font-weight:500}
+.deb .dh{font:500 12px var(--mono);color:var(--mint-hi);letter-spacing:.06em;margin:4px 0 10px}.deb .turn{border-left:2px solid var(--ln2);padding:2px 0 2px 14px;margin:0 0 14px}.deb .turn h4{margin:0 0 6px;font:500 12px var(--mono);letter-spacing:.06em}.deb .turn h4 b{color:var(--ink)}.deb .turn h4 span{color:var(--t3)}.deb .turn .bodyline.assistant:before{content:''}.deb .advocate{border-color:#7ca9d4}.deb .skeptic{border-color:#d58c91}.deb .analyst{border-color:#a9b7c6}.deb .mod{border-color:#e2e9f1;background:rgba(124,169,212,.05);padding:10px 14px}
 .cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:6px 0}.cmp>div{border-left:1px solid var(--ln2);padding-left:14px;min-width:0}.cmp h4{margin:0 0 6px;font:500 12px var(--mono);color:var(--mint);letter-spacing:.04em}.cmp .bodyline.assistant:before{content:''}@media(max-width:760px){.cmp{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--t2);background:none}.bodyline.streaming:after{animation:none}}
 @media(max-width:1050px){.foot .right{display:none}}
@@ -101,7 +102,7 @@ const preferred=[
  ['Qwen3-4B-q4f16_1-MLC','Qwen 3 · 4B (needs a strong GPU)'],
  ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 · 3B']
 ];
-const COMMANDS=['/help','/read','/compare','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
+const COMMANDS=['/help','/read','/compare','/debate','/council','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
 const $=id=>document.getElementById(id),screen=$('screen'),input=$('input'),modelSelect=$('model'),fileInput=$('file');
 
 // ---------- settings (kept in this browser; nothing leaves it) ----------
@@ -288,6 +289,40 @@ async function compareCmd(args){
   busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);foot();input.focus()}
  add('dim','Not added to the conversation. Same settings and attached files for both; '+modelName(A)+' is loaded again.')}
 
+// ---------- /debate: several agents argue a question, then a moderator weighs it up ----------
+const SEATS=[{name:'Advocate',brief:'You argue FOR the strongest "yes" answer or the most defensible position. Make the best honest case for it.'},
+ {name:'Skeptic',brief:'You argue AGAINST: find the weaknesses, risks, counter-examples and what the other side gets wrong.'},
+ {name:'Analyst',brief:'You are neutral. Weigh the evidence, separate fact from opinion, and say what it depends on.'}];
+async function say(sys,user,max){const thinking=isThinkingModel(active)&&cfg.think,req={messages:[{role:'system',content:sys+'\n\n'+facts()},{role:'user',content:user}],temperature:Math.max(.5,cfg.temp),max_tokens:thinking?Math.max(max,1024):max};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
+ const r=await engine.chat.completions.create(req);return splitThink(r.choices?.[0]?.message?.content||'').answer.trim()||'[No answer: the reply limit ran out]'}
+function trimLog(log,budget){let out=log.map(x=>`${x.who} (round ${x.round}): ${x.text}`);while(out.length>1&&tok(out.join('\n\n'))>budget)out.shift();return out.join('\n\n')}
+async function debateCmd(args){
+ if(!engine){add('error','Load a model first: /load. Then /debate <question>.');return}
+ let rounds=2,models=[];while(args[0]&&args[0].startsWith('--')){const f=args.shift();if(f==='--rounds')rounds=Math.max(1,Math.min(3,+args.shift()||2));else if(f==='--models')models=String(args.shift()||'').split(',').map(findModel).filter(Boolean).map(o=>o.value)}
+ const q=args.join(' ').trim();
+ if(!q){add('dim','Usage: /debate [--rounds 1-3] [--models a,b,c] <question>\nThree agents (Advocate, Skeptic, Analyst) give opening arguments, then rebut each other, then a Moderator weighs up who made the better case and gives a verdict.\nBy default every agent runs on the loaded model. --models gives each agent its own model (slower: the terminal swaps models between turns, then reloads yours).\nExample: /debate Is it better to pay off student loans before investing?\nExample: /debate --models qwen,llama,phi Should index funds beat stock picking?');return}
+ const A=active,seats=SEATS.map((x,i)=>({...x,model:models.length?models[i%models.length]:A})),win=windowSize(A),per=Math.min(cfg.maxTokens,320),log=[];
+ busy=true;cancelRequested=false;controls();
+ const root=document.createElement('div');root.className='entry deb';const head=document.createElement('div');head.className='dh';head.textContent='DEBATE · '+q;root.appendChild(head);screen.appendChild(root);scroll();
+ const card=(who,sub,cls='')=>{const d=document.createElement('div'),h=document.createElement('h4'),a=document.createElement('div');d.className='turn '+cls;h.innerHTML=`<b>${who}</b> <span>${sub}</span>`;a.className='bodyline assistant';d.append(h,a);root.appendChild(d);return {d,a}};
+ const use=async id=>{if(id===active)return;status('LOADING');const sp=spinner(root,'Switching to '+modelName(id),'');try{await engine.reload(id);active=id}finally{sp.done()}};
+ try{
+  for(let r=1;r<=rounds&&!cancelRequested;r++){
+   const sofar=trimLog(log,Math.floor(win*.45));
+   for(const s of seats){if(cancelRequested)break;await use(s.model);status('GENERATING',true);
+    const c=card(s.name.toUpperCase(),(r===1?'opening':'rebuttal '+(r-1))+' · '+modelName(s.model),s.name.toLowerCase());const sp=spinner(c.d,null,s.name+' is arguing');scroll();
+    const sys=`You are the ${s.name} in a short debate between three agents (Advocate, Skeptic, Analyst). ${s.brief} Be concrete, give reasons and real examples, and do not invent statistics or quotes. Under 120 words. Do not write any other agent's lines.`;
+    const user=r===1?`Question: ${q}\n\nGive your opening argument.`:`Question: ${q}\n\nThe debate so far:\n${sofar}\n\nRespond directly to the strongest point made against your position, name who made it, and say whether it changes your view.`;
+    let t;try{t=await say(sys,user,per)}finally{sp.done()}render(c.a,t);log.push({who:s.name,round:r,text:t});scroll()}}
+  if(!cancelRequested){await use(A);status('GENERATING',true);const c=card('MODERATOR','verdict · '+modelName(A),'mod');const sp=spinner(c.d,null,'Weighing the arguments');scroll();
+   const t=await say('You moderate a debate between three agents. Judge the arguments on reasoning and evidence, not on which side sounds confident. Do not invent facts.',`Question: ${q}\n\nTranscript:\n${trimLog(log,Math.floor(win*.55))}\n\nWrite: 1) where the agents agree, 2) the key disagreement and why, 3) which argument was strongest and who made it, 4) a one-line verdict that starts with "Verdict:". Under 180 words.`,Math.min(cfg.maxTokens,420));
+   sp.done();render(c.a,t);messages.push({role:'user',content:'Debate: '+q},{role:'assistant',content:'Moderator verdict after a debate between Advocate, Skeptic and Analyst:\n'+t});scroll()}}
+ catch(e){add('error','Debate stopped: '+fmt(e.message))}
+ finally{root.querySelectorAll('.spin').forEach(x=>x.remove());
+  if(active!==A){status('LOADING');const sp=spinner(root,'Switching back to '+modelName(A),'');try{await engine.reload(A);active=A}catch(e){add('error','Could not switch back: '+fmt(e.message)+'. Use /load.');engine=null;active=null;$('active').textContent='NONE'}sp.done()}
+  busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);foot();input.focus()}
+ add('dim',cancelRequested?'Debate stopped.':'The moderator\'s verdict was added to the conversation, so you can ask follow-up questions about it. Small models argue fluently but can be wrong; check anything that matters.')}
+
 async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=isThinkingModel(active)&&cfg.think;
  // budget: the window, minus the reply, minus the system prompt and question; files take up to 70% of what is left
@@ -335,7 +370,7 @@ function download(filename,data,type){const blob=new Blob([data],{type});const u
 function listModels(){return Array.from(modelSelect.options).map((o,i)=>`${i+1}. ${o.textContent}${o.value===active?' [LOADED]':o.value===modelSelect.value?' [SELECTED]':''}`).join('\n')}
 
 function runCommand(raw){const [cmd,...args]=raw.split(/\s+/);const param=args.join(' ');switch(cmd.toLowerCase()){
-case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
+case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/debate <q>        Three AI agents debate a question, then a moderator gives a verdict\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
 case '/models':add('dim',listModels());break;
 case '/model':{if(!param){add('dim','Selected: '+(modelSelect.selectedOptions[0]?.textContent||'none'));break}const q=param.toLowerCase(),opts=Array.from(modelSelect.options);const option=(/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().includes(q)||o.value.toLowerCase().includes(q));if(!option){add('error','No matching model found. Use /models to view choices.');break}modelSelect.value=option.value;cfg.model=option.value;save();foot();add('dim','Selected '+option.textContent+'. Enter /load to download and activate it.');break}
 case '/load':void loadModel();break;
@@ -346,6 +381,7 @@ case '/temp':{const n=+param;if(!param){add('dim','Temperature: '+cfg.temp);brea
 case '/system':if(param){cfg.system=param;save();messages=[];add('dim','System instruction updated. Conversation context cleared.')}else add('dim',cfg.system);break;
 case '/read':void readCmd(param.trim());break;
 case '/compare':void compareCmd(args);break;
+case '/debate':case '/council':void debateCmd(args);break;
 case '/upload':fileInput.click();add('dim','Choose files… (or drag them onto the terminal, or paste them)');break;
 case '/files':add('dim',files.length?files.map((f,i)=>`${i+1}. ${f.name}  ~${f.tokens.toLocaleString()} tokens`).join('\n')+(active?`\nWindow: ${windowSize(active)} tokens; long files are cut to fit.`:''):'No files attached. Use /upload, drag and drop, or paste.');break;
 case '/cat':{const f=files.find(f=>f.name.toLowerCase().includes(param.toLowerCase()))||(!param&&files[0]);if(!f){add('error','No attached file matches. Use /files.');break}add('dim',`── ${f.name} ──\n`+f.text.slice(0,2000)+(f.text.length>2000?`\n… (${(f.text.length-2000).toLocaleString()} more characters)`:''));break}

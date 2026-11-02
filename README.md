@@ -8,7 +8,7 @@ Upload `index.html` to the `terminal/` folder of your GitHub Pages `lab` reposit
 
 ## Commands
 
-`/help`, `/read /finance/research.html`, `/compare llama <question>`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
+`/help`, `/read /finance/research.html`, `/compare llama <question>`, `/debate <question>`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
 
 Use Enter to submit, up/down arrows for command history, Tab to complete a command, Ctrl+C to stop a reply, Ctrl+L to clear. Right click for a small menu. All ordinary text is sent to the loaded model. Settings (model, thinking, limits, system instruction) are remembered in this browser.
 
@@ -19,6 +19,8 @@ Use Enter to submit, up/down arrows for command history, Tab to complete a comma
 ## Reading pages and comparing models
 
 `/read <page>` fetches a page from this site (Finance, Lab, the main site) and attaches its readable text like a file, so the model can answer from it. Other websites mostly block pages from being read by other sites, and the terminal says so. `/compare <model> <question>` sends the question to the loaded model, then briefly loads the other model, asks it the same thing with the same settings and files, shows the two answers side by side, and switches back. Comparisons are not added to the conversation.
+
+`/debate [--rounds 1-3] [--models a,b,c] <question>` (also `/council`) runs a short debate: an Advocate, a Skeptic and an Analyst give opening arguments, rebut each other, and a Moderator says where they agree, what the real disagreement is, which argument was strongest, and gives a verdict. By default all agents run on the loaded model with different briefs; `--models` gives each agent its own model, swapping between turns (slower) and reloading yours at the end. The verdict is added to the conversation so you can ask follow-ups.
 
 ## Live quotes
 
