@@ -71,6 +71,9 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 @media(prefers-reduced-motion:reduce){.spin .v{animation:none;color:var(--t2);background:none}.bodyline.streaming:after{animation:none}}
 @media(max-width:1050px){.foot .right{display:none}}
 @media(max-width:650px){main{padding:14px 14px 6px}.inputbar{padding:6px 14px 12px}.inputbar label,.inputbar input,.promptline,.bodyline{font-size:13px}.logo{font-size:6px}.foot{padding:4px 14px;font-size:10px}.foot .right{display:none}}
+.tool{margin:6px 0 2px;border-left:2px solid #29394c;padding-left:10px}.tool .th{color:var(--ink);font-weight:500}.tool .th b{color:var(--mint)}.tool .th.bad b{color:var(--red)}
+.tool details summary{cursor:pointer;color:var(--t3);font-size:12.5px}.tool pre{margin:4px 0;white-space:pre-wrap;word-break:break-word;color:var(--t2);font:inherit;font-size:12.5px;max-height:320px;overflow:auto;background:#0a1016;border:1px solid var(--ln);border-radius:6px;padding:6px 8px}
+.tool .out{color:var(--text)}.tool .out.bad{color:var(--red)}.tool .ar{color:#62758a}
 </style>
 </head>
 <body>
@@ -92,6 +95,7 @@ Type <strong>/help</strong> for commands, <strong>/models</strong> to list model
 </div>
 <input type="file" id="file" multiple hidden/><div id="drop" class="drop" aria-hidden="true">Drop files to attach them to your next prompt</div>
 <div id="context" class="context-menu" role="menu"><button id="load">Load selected model</button><button id="stop" disabled>Stop generation</button><button id="upload">Attach files…</button><button id="reset">Clear terminal</button><hr/><button id="openModels">Choose model…</button><select id="model" class="sr-only" aria-label="Model selector"><option value="">Checking catalog…</option></select></div>
+<script src="tools.js"></script>
 <script type="module">
 // The model library is loaded on page open; models download only on /load.
 const CDN='https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.86/+esm';
@@ -101,16 +105,20 @@ const preferred=[
  ['Qwen3-0.6B-q4f16_1-MLC','Qwen 3 · 0.6B (lightweight)'],
  ['Qwen2.5-0.5B-Instruct-q4f16_1-MLC','Qwen 2.5 · 0.5B (lightweight)'],
  ['Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC','Qwen Coder · 0.5B'],
+ ['Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC','Qwen Coder · 1.5B (good for Python)'],
+ ['Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC','Qwen Coder · 3B (better Python)'],
+ ['Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC','Qwen Coder · 7B (best Python, strong GPU)'],
  ['Llama-3.2-1B-Instruct-q4f16_1-MLC','Llama 3.2 · 1B'],
  ['Qwen3-1.7B-q4f16_1-MLC','Qwen 3 · 1.7B'],
  ['Qwen3-4B-q4f16_1-MLC','Qwen 3 · 4B (needs a strong GPU)'],
- ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 · 3B']
+ ['Llama-3.2-3B-Instruct-q4f16_1-MLC','Llama 3.2 · 3B'],
+ ['Qwen3-8B-q4f16_1-MLC','Qwen 3 · 8B (strong GPU)']
 ];
-const COMMANDS=['/help','/read','/compare','/debate','/council','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
+const COMMANDS=['/help','/agent','/py','/python','/run','/sh','/linux','/docs','/ws','/autorun','/read','/compare','/debate','/council','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
 const $=id=>document.getElementById(id),screen=$('screen'),input=$('input'),modelSelect=$('model'),fileInput=$('file');
 
 // ---------- settings (kept in this browser; nothing leaves it) ----------
-const DEFAULTS={think:false,steps:true,keys:{},maxTokens:1024,temp:0.7,system:'You are a helpful and accurate assistant in the LDB Lab AI Terminal. Answer directly and concisely. Say clearly when you are unsure.',model:''};
+const DEFAULTS={autorun:true,fixes:2,think:false,steps:true,keys:{},maxTokens:1024,temp:0.7,system:'You are a helpful and accurate assistant in the LDB Lab AI Terminal. Answer directly and concisely. Say clearly when you are unsure.',model:''};
 let cfg={...DEFAULTS};
 try{Object.assign(cfg,JSON.parse(localStorage.getItem('ldb-terminal')||'{}'))}catch{}
 function save(){try{localStorage.setItem('ldb-terminal',JSON.stringify(cfg))}catch{}}
@@ -297,6 +305,75 @@ async function compareCmd(args){
 const SEATS=[{name:'Advocate',brief:'You argue FOR the strongest "yes" answer or the most defensible position. Make the best honest case for it.'},
  {name:'Skeptic',brief:'You argue AGAINST: find the weaknesses, risks, counter-examples and what the other side gets wrong.'},
  {name:'Analyst',brief:'You are neutral. Weigh the evidence, separate fact from opinion, and say what it depends on.'}];
+
+/* ===================== tools: Python, files, docs, Linux, and agent mode ===================== */
+const T=window.LDBTools;let pendingCheck=null,fixDepth=0;
+function toolBlock(kind,code,lang){const root=document.createElement('div');root.className='entry tool';const th=document.createElement('div');th.className='th';th.innerHTML='● <b>'+esc(kind)+'</b>';root.appendChild(th);
+ if(code){const d=document.createElement('details');if(code.split('\n').length<=8)d.open=true;const s=document.createElement('summary');s.textContent=(lang||'code')+' · '+code.split('\n').length+' line'+(code.split('\n').length===1?'':'s');const pre=document.createElement('pre');pre.textContent=code;d.append(s,pre);root.appendChild(d)}
+ const out=document.createElement('pre');out.className='out';out.textContent='  running…';root.appendChild(out);screen.appendChild(root);scroll();
+ return {set(text,ok){out.textContent=text||'(no output)';out.classList.toggle('bad',!ok);th.classList.toggle('bad',!ok);scroll()}}}
+function pyText(r){return [r.out&&r.out.trim(),r.result!=null&&r.result!=='None'?'→ '+r.result:'',r.err&&r.err.trim()].filter(Boolean).join('\n')}
+function codeBlocks(t){const out=[],re=/```(python|py|python3|bash|sh|shell)?[ \t]*\n([\s\S]*?)```/gi;let m;while((m=re.exec(t)))out.push({lang:(m[1]||'').toLowerCase(),code:m[2].replace(/\n+$/,'')});return out}
+async function runPy(code,label){if(T.python.state()!=='ready')add('dim','Starting Python (real CPython in your browser, first time takes a few seconds)…');const b=toolBlock(label||'Python',code,'python');const r=await T.python.run(code);b.set(pyText(r),r.ok);return r}
+async function runSh(cmd){if(T.linux.state()!=='ready')add('dim','Booting the Linux machine (same as the Linux Sandbox, about 10 seconds the first time)…');const b=toolBlock('Linux',cmd,'shell');try{const r=await T.linux.run(cmd,30000);b.set(r.out+(r.code>0?'\n[exit code '+r.code+']':''),r.ok);return r}catch(e){b.set('[could not start Linux] '+e.message,false);return {ok:false,out:e.message}}}
+/* after an answer: run its Python, and if it fails, show the model the error and let it fix itself */
+async function checkCode(ans){if(!cfg.autorun)return;const blocks=codeBlocks(ans).filter(b=>/^(python|py|python3)?$/.test(b.lang)&&!/^\s*(pip|\$|>>>)/.test(b.code)&&!/input\(/.test(b.code));if(!blocks.length){fixDepth=0;return}
+ const code=blocks.map(b=>b.code).join('\n\n');const r=await runPy(code,'Python · checking the answer');
+ if(r.ok){if(fixDepth)add('dim','Fixed: the code runs now.');fixDepth=0;return}
+ if(fixDepth>=cfg.fixes||!engine){add('dim',fixDepth?'Still failing after '+fixDepth+' fix attempt'+(fixDepth>1?'s':'')+'. You can paste the error back, or try a stronger model (Qwen Coder 3B or 7B).':'Auto-fix is off (/autorun fix 1 to turn it on).');fixDepth=0;return}
+ fixDepth++;add('dim','The code failed. Showing the model the error so it can fix it (attempt '+fixDepth+' of '+cfg.fixes+')…');
+ await ask('Your code was run in real Python ('+(T.python.version()||'3.x')+') and failed with:\n```\n'+(r.err||r.out||'').slice(-1500)+'\n```\nFix the code. Reply with the complete corrected code in one ```python block and one line saying what was wrong.')}
+const AGENT_SYS=`You are the agent in the LDB Lab terminal. You solve the user's task by using tools, one step at a time, and you check your work by running it.
+Tools (use exactly ONE per reply, written exactly like this):
+<python>
+code to run in real Python 3 (print what you need to see; files you write go in the workspace)
+</python>
+<shell>
+a command for a real Linux machine (BusyBox: ls, cat, grep, sed, awk, find, vi, sh scripts; no internet, no package manager)
+</shell>
+<write path="file.py">
+the full content of a workspace file
+</write>
+<read path="file.py"/>
+<docs>a Python name such as str.split, json, itertools.groupby</docs>
+<done>
+your final answer to the user, short and clear
+</done>
+Rules: think briefly, then give one tool. After each tool you will get its result. Always run code before claiming it works. If something fails, read the error and fix it. Use <docs> when unsure how a Python function behaves. Finish with <done> once the task is complete and verified.`;
+function parseAction(t){const m=/<(python|shell|docs|done)>([\s\S]*?)<\/\1>/i.exec(t)||/<(write) path="([^"]+)">([\s\S]*?)<\/write>/i.exec(t)||/<(read) path="([^"]+)"\s*\/?>/i.exec(t);
+ if(!m){const cb=codeBlocks(t)[0];if(cb)return {tool:/sh|bash/.test(cb.lang)?'shell':'python',arg:cb.code};return null}
+ const tool=m[1].toLowerCase();if(tool==='write')return {tool,path:m[2],arg:m[3].replace(/^\n/,'')};if(tool==='read')return {tool,path:m[2]};return {tool,arg:m[2].trim()}}
+async function agentCmd(task){if(!task){add('dim','Usage: /agent <task>. The model plans, runs Python and Linux commands, reads and writes files in the workspace, checks its own work, then answers.\nExample: /agent write a function that finds prime numbers, test it, and save it to primes.py');return}
+ if(!engine){add('error','No AI model loaded. For agent mode pick a coder model (/model coder), then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('AGENT',true);
+ const log=[{role:'system',content:AGENT_SYS+'\n\n'+facts()},{role:'user',content:'Task: '+task}];let steps=0,final=null;const MAX=12;
+ try{while(steps<MAX&&!cancelRequested){steps++;
+   const sp=spinner(screen,'Thinking',modelName(active)+' · step '+steps+' · ctrl+c to stop');
+   const thinking=isThinkingModel(active)&&cfg.think,req={messages:log,temperature:.2,max_tokens:thinking?1600:900};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
+   let text='';try{const r=await engine.chat.completions.create(req);text=splitThink(r.choices?.[0]?.message?.content||'').answer.trim()}finally{sp.done()}
+   if(cancelRequested)break;const act=parseAction(text);const said=text.replace(/<(python|shell|docs|done|write|read)[\s\S]*$/i,'').trim();if(said)add('dim',said.slice(0,600));
+   log.push({role:'assistant',content:text});
+   if(!act){log.push({role:'user',content:'Reply with exactly one tool, like <python>...</python>, or <done>...</done> if finished.'});continue}
+   let result='';
+   if(act.tool==='done'){final=act.arg;break}
+   if(act.tool==='python'){const r=await runPy(act.arg);result=(r.ok?'OK':'ERROR')+'\n'+(pyText(r)||'(no output)')}
+   else if(act.tool==='shell'){const r=await runSh(act.arg);result='exit '+(r.code==null?'?':r.code)+'\n'+(r.out||'(no output)')}
+   else if(act.tool==='write'){const b=toolBlock('Write '+act.path,act.arg,act.path.split('.').pop());const r=await T.fs.write(act.path,act.arg);b.set(r.ok?'saved '+act.path+' ('+act.arg.length+' characters)':r.err,r.ok);result=r.ok?'Saved '+act.path:'ERROR '+r.err}
+   else if(act.tool==='read'){const b=toolBlock('Read '+act.path);const r=await T.fs.read(act.path);b.set(r.ok?r.content.slice(0,1500):r.err,r.ok);result=r.ok?r.content.slice(0,4000):'ERROR '+r.err}
+   else if(act.tool==='docs'){const b=toolBlock('Docs '+act.arg);const r=await T.docs(act.arg);b.set((r.out||r.err||'').slice(0,1200),r.ok);result=(r.out||r.err||'').slice(0,3500)}
+   log.push({role:'user',content:'Result of '+act.tool+':\n'+String(result).slice(0,4000)+'\n\nNext step (one tool), or <done> if the task is complete and verified.'});
+   // keep the conversation inside the model's window
+   while(tok(log.map(m=>m.content).join(''))>windowSize(active)*0.7&&log.length>4)log.splice(2,2)}
+  if(cancelRequested)add('dim','[Agent stopped]');
+  else if(final!=null){const el=add('assistant','');render(el,final);messages.push({role:'user',content:'(agent task) '+task},{role:'assistant',content:final})}
+  else add('dim','Stopped after '+MAX+' steps without finishing. The files it made are in the workspace (/ws). Try a stronger model or a smaller task.')}
+ catch(e){add('error','[Agent error] '+fmt(e.message))}
+ finally{busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);input.focus()}}
+async function wsCmd(arg){const r=await T.fs.ls();if(!r.ok){add('error',r.err);return}
+ if(!arg){add('dim',r.files.length?'Workspace (saved in this browser):\n'+r.files.map(f=>'  '+f.path+'  '+kb(f.size)).join('\n')+'\n/ws <file> shows one · /ws rm <file> deletes · /ws get <file> downloads':'The workspace is empty. Python, agent mode and you can save files here.');return}
+ const [a,b]=arg.split(/\s+/);if(a==='rm'&&b){const x=await T.fs.rm(b);add(x.ok?'dim':'error',x.ok?'Deleted '+b:x.err);return}
+ if(a==='get'&&b){const x=await T.fs.read(b);if(x.ok)download(b.split('/').pop(),x.content,'text/plain');else add('error',x.err);return}
+ const x=await T.fs.read(a);if(!x.ok){add('error','No file '+a+' in the workspace.');return}const el=add('assistant','');render(el,'```'+(a.split('.').pop()||'')+'\n'+x.content.slice(0,20000)+'\n```')}
+if(/[?&]test=1/.test(location.search))window.__ldbTest={setEngine:e=>{engine=e;active=preferred[3][0];controls()},run:runCommand,agent:agentCmd};
 async function say(sys,user,max){const thinking=isThinkingModel(active)&&cfg.think,req={messages:[{role:'system',content:sys+'\n\n'+facts()},{role:'user',content:user}],temperature:Math.max(.5,cfg.temp),max_tokens:thinking?Math.max(max,1024):max};if(isThinkingModel(active))req.extra_body={enable_thinking:thinking};
  const r=await engine.chat.completions.create(req);return splitThink(r.choices?.[0]?.message?.content||'').answer.trim()||'[No answer: the reply limit ran out]'}
 function trimLog(log,budget){let out=log.map(x=>`${x.who} (round ${x.round}): ${x.text}`);while(out.length>1&&tok(out.join('\n\n'))>budget)out.shift();return out.join('\n\n')}
@@ -344,7 +421,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  if(room<0){add('error',`That prompt is too long for this model (window ${win} tokens). Shorten it or lower /tokens.`);busy=false;controls();status('READY',true);return}
  const fb=fileBlock(Math.floor(room*(files.length?0.85:0.7)),question);room-=tok(fb.text);
  const hist=fitHistory(Math.max(0,room));
- const steps=cfg.steps&&!thinking&&looksMath(question);
+ const steps=cfg.steps&&!thinking&&looksMath(question)&&!fixDepth;
  if(steps)add('dim','Maths or logic question: asking the model to work it out step by step first (/steps off to stop this).');
  if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote and a ticker (e.g. /quote NVDA for Nvidia) fetches one for it to use.');
  const userContent=fb.text+question+(fb.text?'\n\n(Answer from the attached file text above. Quote the sentence that answers the question and give its page. If the text does not contain the answer, say so plainly.)':'')+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
@@ -373,17 +450,17 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
   const tail=t=>{const n=document.createElement('span');n.className='note';n.textContent='\n'+t;answer.appendChild(n)};
   if(cancelRequested){render(answer,ans||'');tail('[Generation stopped]')}
   else if(finish==='length'&&(p.thinking||!ans)){answer.className='bodyline error';answer.textContent=`[Ran out of tokens ${p.thinking?'while still thinking':'before answering'}: the ${reserve}-token reply limit was used up.] Try /think off for a direct answer, raise the limit with /tokens 2048, or ask a narrower question.`}
-  else if(ans){render(answer,ans);if(finish==='length')tail('[Cut off at the '+reserve+'-token limit. Type "continue" or raise /tokens.]');messages.push({role:'user',content:question+(sentFiles.length?`\n(attached: ${sentFiles.join(', ')})`:'')},{role:'assistant',content:ans})}
+  else if(ans){render(answer,ans);if(finish==='length')tail('[Cut off at the '+reserve+'-token limit. Type "continue" or raise /tokens.]');messages.push({role:'user',content:question+(sentFiles.length?`\n(attached: ${sentFiles.join(', ')})`:'')},{role:'assistant',content:ans});pendingCheck=ans}
   else{answer.textContent='[No text returned by model]'}
   const secs=(performance.now()-t0)/1000,n=usage?.completion_tokens;lastStats=`${modelName(active)} · `+(n?`${n} tokens in ${secs.toFixed(1)} s (${(n/secs).toFixed(1)} tok/s), prompt ${usage.prompt_tokens}`:`${secs.toFixed(1)} s`);stats.textContent=lastStats}
  catch(e){answer.className='bodyline error';answer.textContent=(text?splitThink(text).answer+'\n':'')+'[Generation error] '+fmt(e.message)+(/context|window|too long/i.test(e.message)?' Use /reset to clear the conversation.':'')}
- finally{sp.done();answer.classList.remove('streaming','empty');busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);input.focus()}}
+ finally{sp.done();answer.classList.remove('streaming','empty');busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);input.focus();if(pendingCheck){const a=pendingCheck;pendingCheck=null;void checkCode(a)}}}
 async function stop(){if(!busy)return;cancelRequested=true;try{await engine.interruptGenerate?.()}catch{}}
 function download(filename,data,type){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function listModels(){return Array.from(modelSelect.options).map((o,i)=>`${i+1}. ${o.textContent}${o.value===active?' [LOADED]':o.value===modelSelect.value?' [SELECTED]':''}`).join('\n')}
 
 function runCommand(raw){const [cmd,...args]=raw.split(/\s+/);const param=args.join(' ');switch(cmd.toLowerCase()){
-case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/debate <q>        Three AI agents debate, vote, then a moderator gives a verdict\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
+case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/agent <task>      Agent mode: plans, runs Python and Linux, edits files, checks its work\n/py <code>         Run real Python 3 in your browser\n/run               Run the code block in the last answer\n/sh <command>      Run a command on a real Linux machine in your browser\n/docs <name>       Real Python documentation, e.g. /docs str.split\n/ws [file]         Files in the workspace (shared by Python, the agent and you)\n/autorun [on|off]  Run Python in answers and let the model fix errors (now '+(cfg.autorun?'on':'off')+')\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/debate <q>        Three AI agents debate, vote, then a moderator gives a verdict\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
 case '/models':add('dim',listModels());break;
 case '/model':{if(!param){add('dim','Selected: '+(modelSelect.selectedOptions[0]?.textContent||'none'));break}const q=param.toLowerCase(),opts=Array.from(modelSelect.options);const option=(/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().includes(q)||o.value.toLowerCase().includes(q));if(!option){add('error','No matching model found. Use /models to view choices.');break}modelSelect.value=option.value;cfg.model=option.value;save();foot();add('dim','Selected '+option.textContent+'. Enter /load to download and activate it.');break}
 case '/load':void loadModel();break;
@@ -393,6 +470,13 @@ case '/tokens':{const n=+param;if(!param){add('dim','Reply limit: '+cfg.maxToken
 case '/temp':{const n=+param;if(!param){add('dim','Temperature: '+cfg.temp);break}if(!(n>=0&&n<=2)){add('error','Use a number from 0 to 2.');break}cfg.temp=n;save();add('dim','Temperature set to '+n+'.');break}
 case '/system':if(param){cfg.system=param;save();messages=[];add('dim','System instruction updated. Conversation context cleared.')}else add('dim',cfg.system);break;
 case '/read':void readCmd(param.trim());break;
+case '/py':case '/python':if(!param){add('dim','Usage: /py <code>  runs real Python 3 in your browser. Separate lines with ; or use /agent for longer programs.\nExample: /py import math; print(math.factorial(20))');break}void runPy(param);break;
+case '/run':{const last=[...messages].reverse().find(m=>m.role==='assistant');const bl=last?codeBlocks(last.content):[];if(!bl.length){add('dim','No code block in the last answer.');break}const b=bl[bl.length-1];if(/sh|bash|shell/.test(b.lang))void runSh(b.code);else void runPy(b.code);break}
+case '/sh':case '/linux':if(!param){add('dim','Usage: /sh <command>  runs it on a real Linux machine in your browser (BusyBox). For a full screen with lessons, open /linux/ on this site.\nExample: /sh uname -a; ls /');break}void runSh(param);break;
+case '/docs':void(async()=>{const b=toolBlock('Docs '+param);const r=await T.docs(param);b.set(r.out||r.err,r.ok)})();break;
+case '/ws':void wsCmd(param.trim());break;
+case '/agent':void agentCmd(param);break;
+case '/autorun':{const v=param.toLowerCase().split(/\s+/);if(v[0]==='fix'){const n=+v[1];if(n>=0&&n<=5){cfg.fixes=n;save();add('dim','Auto-fix attempts: '+n)}else add('error','Use /autorun fix 0 to 5.');break}if(v[0]&&!['on','off'].includes(v[0])){add('error','Use /autorun on or /autorun off.');break}cfg.autorun=v[0]?v[0]==='on':!cfg.autorun;save();add('dim','Run Python in answers to check it: '+(cfg.autorun?'ON':'OFF')+' (fix attempts: '+cfg.fixes+')');break}
 case '/compare':void compareCmd(args);break;
 case '/debate':case '/council':void debateCmd(args);break;
 case '/upload':fileInput.click();add('dim','Choose files… (or drag them onto the terminal, or paste them)');break;
@@ -412,7 +496,7 @@ case '/key':{const [svc,key]=args;if(!svc){const k=cfg.keys||{};add('dim',`Marke
  cfg.keys={...(cfg.keys||{}),[name]:key.trim()};save();const last=screen.querySelector('.entry:last-child .promptline');if(last)last.lastChild.textContent=`/key ${svc} ••••${key.slice(-4)}`;history[history.length-1]=`/key ${svc} ••••`;
  add('dim',`${name==='finnhub'?'Finnhub':'Alpha Vantage'} key saved in this browser only (never sent anywhere except to ${name==='finnhub'?'finnhub.io':'alphavantage.co'}). Try /quote NVDA (Nvidia).`);break}
 case '/steps':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add('error','Use /steps on or /steps off.');break}cfg.steps=v?v==='on':!cfg.steps;save();add('dim',`Step-by-step for maths and logic questions is ${cfg.steps?'ON':'OFF'}.`);break}
-case '/about':add('dim','LDB-Lab AI Terminal 2.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
+case '/about':add('dim','LDB-Lab AI Terminal 3.0\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
 default:add('error',`Unknown command: ${cmd}. Enter /help.`)
 }}
 $('form').addEventListener('submit',e=>{e.preventDefault();const raw=input.value.trim();if(!raw)return;if(busy||loading)return;input.value='';add('prompt',raw);history.push(raw);historyPos=history.length;if(raw.startsWith('/'))runCommand(raw);else void ask(raw)});
