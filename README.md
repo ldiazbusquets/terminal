@@ -44,3 +44,13 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 ## Theme
 
 Silver-blue on black, the LDB Lab dark theme: background `#050607`, silver text `#c4ceda` (highlights `#e2e9f1`), muted `#899bad`, blue accent `#7ca9d4`, errors `#d58c91`; Geist Mono and Manrope. The start screen keeps the ASCII banner (in the blue accent). While a model works, a small fast-spinning sphere of silver-blue points sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
+
+## Ideas not built yet (pinned Nov 2026)
+
+1. Cloud mode with the user's own Groq key (large models, fast, works on any laptop or phone); key kept in localStorage, local WebLLM stays the private/offline option.
+2. Saved chats (`/history`) and a workspace that persists between visits (IndexedDB).
+3. Easier first start: a question with no model loaded picks the best model for the device, loads it with a progress bar, then answers.
+4. Banner still says Version 2.1 (it's 3.0).
+5. Grouped `/help` (Chat, Files, Code, Models, Finance) and live suggestions when typing `/`.
+6. Finance tie-ins: keyless `/quote` (the Parallax feed), a command to pull a company's SEC figures.
+7. Phone support (follows from cloud mode).
