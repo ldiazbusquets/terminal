@@ -38,6 +38,14 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 .inputbar label{flex:none;color:var(--mint);white-space:nowrap}
 .inputbar input{flex:1;width:20px;min-width:0;background:none;border:0;outline:0;box-shadow:none;border-radius:0;color:var(--ink);font:inherit;caret-color:var(--mint);padding:0}
 .inputbar button{display:none}
+.inputbar{position:relative}
+.sugg{display:none;position:absolute;left:16px;right:16px;bottom:100%;margin-bottom:4px;max-width:720px;background:#0b1118;border:1px solid var(--ln2);border-radius:12px;padding:6px;box-shadow:0 18px 50px -18px #000;z-index:5}
+.sugg.open{display:block}
+.sugg div{display:flex;gap:12px;padding:5px 10px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap;overflow:hidden}
+.sugg div b{color:var(--ink);font-weight:500;min-width:15ch}.sugg div i{font-style:normal;color:var(--t3);min-width:12ch}.sugg div span{color:var(--t3);overflow:hidden;text-overflow:ellipsis}
+.sugg div.on{background:rgba(124,169,212,.12)}.sugg div.on b{color:var(--mint-hi)}
+.sugg .hint{cursor:default}
+@media(max-width:650px){.sugg div i{display:none}.sugg{left:8px;right:8px}}
 .foot{flex:none;display:flex;align-items:center;gap:18px;min-height:30px;padding:5px 24px;border-top:1px solid var(--ln);background:var(--term);font:400 11px var(--mono);color:var(--t3);letter-spacing:.02em}
 .foot .right{margin-left:auto}.foot span{white-space:nowrap}.foot span span{color:var(--t2)}
 .sr-only{position:absolute;clip:rect(0,0,0,0);width:1px;height:1px;overflow:hidden}
@@ -83,14 +91,15 @@ main{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:22px 
 ██║     ██║  ██║██████╔╝    ██║     ███████║██████╔╝
 ██║     ██║  ██║██╔══██╗    ██║     ██╔══██║██╔══██╗
 ███████╗██████╔╝██████╔╝    ███████╗██║  ██║██████╔╝
-╚══════╝╚═════╝ ╚═════╝     ╚══════╝╚═╝  ╚═╝╚═════╝</pre><div class="intro"><strong>LDB LAB COMMAND TERMINAL [Version 2.1]</strong>
+╚══════╝╚═════╝ ╚═════╝     ╚══════╝╚═╝  ╚═╝╚═════╝</pre><div class="intro"><strong>LDB LAB COMMAND TERMINAL [Version 3.1]</strong>
 (c) LDB Lab. Browser-based AI workspace.
 
-WebGPU local inference  |  Qwen / Llama  |  GitHub Pages
-Type <strong>/help</strong> for commands, <strong>/models</strong> to list models, <strong>/load</strong> to initialize AI.
+Models on your device (WebGPU) or in the cloud (Groq, /cloud)  |  GitHub Pages
+Just type a question: the best model for this device loads by itself the first time.
+Type <strong>/</strong> to see commands, or <strong>/help</strong> for the full list. Chats are saved in this browser (<strong>/history</strong>).
 <strong>/upload</strong> (or drag and drop, or paste) attaches files to the conversation.
 </div></main>
-  <form id="form" class="inputbar"><label for="input">luis@ldb-lab:~$</label><input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="" autofocus aria-label="Terminal command"/><button type="submit" id="send">Run</button></form>
+  <form id="form" class="inputbar"><div id="sugg" class="sugg" role="listbox" aria-label="Commands"></div><label for="input">luis@ldb-lab:~$</label><input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="" autofocus aria-label="Terminal command"/><button type="submit" id="send">Run</button></form>
   <footer class="foot"><span class="state"><span id="led" class="led"></span><span id="state">NOT LOADED</span></span><span>WEBGPU <span id="gpu">CHECKING</span></span><span>MODEL <span id="active">NONE</span></span><span>THINKING <span id="thinkState">OFF</span></span><span>FILES <span id="fileCount">0</span></span><span class="right">↑↓ history · tab complete · ctrl+c stop · ctrl+l clear</span></footer>
 </div>
 <input type="file" id="file" multiple hidden/><div id="drop" class="drop" aria-hidden="true">Drop files to attach them to your next prompt</div>
@@ -116,7 +125,15 @@ const CATALOG=[
 ];
 const TAGNAME={coder:'code',reason:'reasoning',think:'can think'};
 const preferred=CATALOG.flatMap(f=>f.models.map(m=>[m[0],f.family+' · '+m[1]]));
-const COMMANDS=['/help','/agent','/py','/python','/run','/sh','/linux','/docs','/ws','/autorun','/read','/compare','/debate','/council','/quote','/key','/steps','/models','/model','/load','/status','/think','/tokens','/temp','/system','/upload','/files','/cat','/unattach','/clear','/reset','/export','/stop','/cache','/purge','/about'];
+const CMDS=[
+ ['Chat','/new','','Start a new chat (the current one stays saved)'],['Chat','/history','[n | delete n]','Saved chats: list, reopen or delete'],['Chat','/reset','','Forget the conversation, files and quotes'],['Chat','/clear','','Clear the screen and start a new chat'],['Chat','/export','','Download this conversation as JSON'],['Chat','/stop','','Stop the reply (or Ctrl+C)'],
+ ['Files and pages','/upload','','Attach files (or drag and drop, or paste)'],['Files and pages','/files','','List attached files'],['Files and pages','/cat','<name>','Show the start of an attached file'],['Files and pages','/unattach','[name]','Remove one or all attached files'],['Files and pages','/read','<page>','Read a page from this site into the chat'],
+ ['Code','/agent','<task>','Agent: plans, runs Python and Linux, checks its work'],['Code','/py','<code>','Run real Python 3 in your browser'],['Code','/run','','Run the code block in the last answer'],['Code','/sh','<command>','Run a command on a real Linux machine'],['Code','/docs','<name>','Python documentation, e.g. /docs str.split'],['Code','/ws','[file]','Files in the workspace (kept between visits)'],['Code','/autorun','[on|off]','Run Python in answers and let the model fix errors'],
+ ['Finance','/quote','<TICKER…>','Stock quotes for the model to use (no key needed)'],['Finance','/company','<TICKER>','A company’s SEC figures and insider trades'],['Finance','/key','<service> <key>','Save a key: groq (cloud mode), finnhub (real-time quotes)'],
+ ['Models','/cloud','[on|off|models]','Large, fast models on Groq with your own key'],['Models','/models','','List models'],['Models','/model','<name|#>','Choose a model (then /load)'],['Models','/load','','Download and load the chosen model'],['Models','/status','','GPU, model, context and settings'],['Models','/compare','<model> <question>','Two models answer side by side'],['Models','/debate','<question>','Three agents debate, a moderator decides'],['Models','/cache','','Which models are downloaded'],['Models','/purge','[name]','Delete a downloaded model'],
+ ['Settings','/think','[on|off]','Qwen reasoning before answering'],['Settings','/steps','[on|off]','Work maths and puzzles out step by step'],['Settings','/tokens','<n>','Reply length limit'],['Settings','/temp','<0-2>','Randomness'],['Settings','/system','[text]','Show or set the system instruction'],['Settings','/about','','About the terminal'],['Settings','/help','','This list']];
+const ALIASES={'/python':'/py','/linux':'/sh','/council':'/debate','/co':'/company'};
+const COMMANDS=[...CMDS.map(c=>c[1]),...Object.keys(ALIASES)];
 const $=id=>document.getElementById(id),screen=$('screen'),input=$('input'),modelSelect=$('model'),fileInput=$('file');
 
 // ---------- settings (kept in this browser; nothing leaves it) ----------
@@ -139,20 +156,99 @@ function kb(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/10485
 function tok(s){return Math.ceil(String(s).length/3.5)}
 
 // ---------- model facts ----------
-function modelName(id){const o=[...modelSelect.options].find(o=>o.value===id);return o?o.textContent.replace(/ \(.*\)$/,''):id}
+function modelName(id){if(isCloud(id))return 'Groq · '+id.slice(6);const o=[...modelSelect.options].find(o=>o.value===id);return o?o.textContent.replace(/ \(.*\)$/,''):id}
 function record(id){return lib?.prebuiltAppConfig.model_list.find(m=>m.model_id===id)}
-function windowSize(id){return record(id)?.overrides?.context_window_size||4096}
-function isThinkingModel(id){return /qwen3/i.test(id||'')}
+function windowSize(id){if(isCloud(id))return 32768;return record(id)?.overrides?.context_window_size||4096}
+function isThinkingModel(id){return !isCloud(id)&&/qwen3/i.test(id||'')}
+function isCloud(id){return /^cloud:/.test(id||'')}
 // DeepSeek R1 distills always reason, and their template opens the <think> block for them.
 function alwaysThinks(id){return /DeepSeek-R1/i.test(id||'')}
 function thinks(id){return (isThinkingModel(id)&&cfg.think)||alwaysThinks(id)}
 function catalogEntry(id){for(const f of CATALOG)for(const m of f.models)if(m[0]===id)return {f,m};return null}
 function gb(id){const v=record(id)?.vram_required_MB;return v?(v/1024).toFixed(1)+' GB':''}
 
-async function initLibrary(){try{lib=await import(CDN);const available=new Set(lib.prebuiltAppConfig.model_list.map(m=>m.model_id));modelSelect.replaceChildren();for(const f of CATALOG){const g=document.createElement('optgroup');g.label=f.family+' · '+f.maker;for(const [id,size,tag] of f.models){if(!available.has(id))continue;const option=document.createElement('option');option.value=id;option.textContent=f.family+' · '+size+(gb(id)?' · '+gb(id):'')+(tag?' · '+TAGNAME[tag]:'');g.appendChild(option)}if(g.children.length)modelSelect.appendChild(g)}if(!modelSelect.options.length){for(const m of lib.prebuiltAppConfig.model_list.filter(m=>/Qwen|Llama/.test(m.model_id)).slice(0,16)){const option=document.createElement('option');option.value=m.model_id;option.textContent=m.model_id;modelSelect.appendChild(option)}}if(!modelSelect.options.length)throw Error('No compatible model entries in current catalog.');if(cfg.model&&available.has(cfg.model))modelSelect.value=cfg.model;let cached=[];try{for(const o of modelSelect.options)if(await lib.hasModelInCache(o.value))cached.push(o.textContent)}catch{}add('dim',`Found ${modelSelect.options.length} model${modelSelect.options.length===1?"":"s"}. Selected: ${modelSelect.selectedOptions[0].textContent}. Type /load to start, or /models to choose.`+(cached.length?`\nAlready downloaded (loads fast): ${cached.join(', ')}`:''));foot()}catch(e){modelSelect.replaceChildren();const o=document.createElement('option');o.textContent='Model catalog unavailable';o.value='';modelSelect.appendChild(o);add('error','Cannot load WebLLM library: '+fmt(e.message)+'. Check internet access, reload the page and try again.')}}
-async function gpuCheck(){if(!('gpu' in navigator)){$('gpu').textContent='UNAVAILABLE';add('error','WebGPU is unavailable. Use an up-to-date desktop Chrome or Edge with GPU support over HTTPS.');return}try{const adapter=await navigator.gpu.requestAdapter();$('gpu').textContent=adapter?'AVAILABLE':'NO ADAPTER';if(!adapter)add('error','No WebGPU adapter was detected; check graphics acceleration settings.')}catch{$('gpu').textContent='UNAVAILABLE'}}
-async function loadModel(){if(loading||busy)return;if(!lib){add('error','Model library is still unavailable. Reload the page to retry.');return}const id=modelSelect.value;if(!id){add('error','Select a model first with /model.');return}if(active===id&&engine){add('dim',`${id} is already loaded.`);return}if(!navigator.gpu){add('error','WebGPU is required to load browser AI models.');return}loading=true;controls();status('LOADING');const e=add('dim',`Preparing ${id}…`);const progress=document.createElement('div');progress.className='progress visible';const bar=document.createElement('div');progress.appendChild(bar);e.parentElement.appendChild(progress);const lsp=spinner(e.parentElement,'Loading model','');try{const callback=(p)=>{e.textContent=fmt(p.text||'Loading model…');if(typeof p.progress==='number')bar.style.width=Math.max(0,Math.min(100,p.progress*100))+'%';scroll()};if(engine){await engine.unload();engine=null;active=null}engine=await lib.CreateMLCEngine(id,{initProgressCallback:callback});active=id;cfg.model=id;save();messages=[];$('active').textContent=modelName(id);status('READY',true);e.textContent=`Ready: ${id}. Context window ${windowSize(id)} tokens.`+(isThinkingModel(id)?` Thinking is ${cfg.think?'ON':'OFF'} (/think to toggle).`:'')+' Type a prompt below.'}catch(err){engine=null;active=null;$('active').textContent='none';status('LOAD FAILED');add('error','Model failed to load: '+fmt(err.message)+'. Try a smaller model, verify WebGPU, and ensure there is enough free GPU memory.')}finally{lsp.done();progress.remove();loading=false;controls();foot();input.focus()}}
+async function initLibrary(){try{lib=await import(CDN);const available=new Set(lib.prebuiltAppConfig.model_list.map(m=>m.model_id));modelSelect.replaceChildren();for(const f of CATALOG){const g=document.createElement('optgroup');g.label=f.family+' · '+f.maker;for(const [id,size,tag] of f.models){if(!available.has(id))continue;const option=document.createElement('option');option.value=id;option.textContent=f.family+' · '+size+(gb(id)?' · '+gb(id):'')+(tag?' · '+TAGNAME[tag]:'');g.appendChild(option)}if(g.children.length)modelSelect.appendChild(g)}if(!modelSelect.options.length){for(const m of lib.prebuiltAppConfig.model_list.filter(m=>/Qwen|Llama/.test(m.model_id)).slice(0,16)){const option=document.createElement('option');option.value=m.model_id;option.textContent=m.model_id;modelSelect.appendChild(option)}}if(!modelSelect.options.length)throw Error('No compatible model entries in current catalog.');if(cfg.model&&available.has(cfg.model))modelSelect.value=cfg.model;let cached=[];try{for(const o of modelSelect.options)if(await lib.hasModelInCache(o.value))cached.push(o.textContent)}catch{}add('dim',`Found ${modelSelect.options.length} model${modelSelect.options.length===1?"":"s"}. Selected: ${modelSelect.selectedOptions[0].textContent}. Type a question to start (it loads by itself), or /models to choose.`+(cached.length?`\nAlready downloaded (loads fast): ${cached.join(', ')}`:''));foot()}catch(e){modelSelect.replaceChildren();const o=document.createElement('option');o.textContent='Model catalog unavailable';o.value='';modelSelect.appendChild(o);add('error','Cannot load WebLLM library: '+fmt(e.message)+'. Check internet access, reload the page and try again.')}}
+async function gpuCheck(){if(!('gpu' in navigator)){$('gpu').textContent='UNAVAILABLE';add('dim','This browser can\u2019t run models on the device (no WebGPU). Cloud mode works anywhere, phones included: /cloud.');return}try{const adapter=await navigator.gpu.requestAdapter();$('gpu').textContent=adapter?'AVAILABLE':'NO ADAPTER';if(!adapter)add('dim','No WebGPU graphics adapter was found, so models can\u2019t run on this device (check that graphics acceleration is on). Cloud mode works anyway: /cloud.')}catch{$('gpu').textContent='UNAVAILABLE'}}
+async function loadModel(){if(loading||busy)return;if(!lib){add('error','Model library is still unavailable. Reload the page to retry.');return}const id=modelSelect.value;if(!id){add('error','Select a model first with /model.');return}if(active===id&&engine){add('dim',`${id} is already loaded.`);return}if(isCloud(active)){engine=null;active=null;cfg.cloud=false;save();add('dim','Cloud mode OFF: loading a model on this device.')}if(!navigator.gpu){add('error','WebGPU is required to load browser AI models.');return}loading=true;controls();status('LOADING');const e=add('dim',`Preparing ${id}…`);const progress=document.createElement('div');progress.className='progress visible';const bar=document.createElement('div');progress.appendChild(bar);e.parentElement.appendChild(progress);const lsp=spinner(e.parentElement,'Loading model','');try{const callback=(p)=>{e.textContent=fmt(p.text||'Loading model…');if(typeof p.progress==='number')bar.style.width=Math.max(0,Math.min(100,p.progress*100))+'%';scroll()};if(engine){await engine.unload();engine=null;active=null}engine=await lib.CreateMLCEngine(id,{initProgressCallback:callback});active=id;cfg.model=id;save();messages=[];$('active').textContent=modelName(id);status('READY',true);e.textContent=`Ready: ${id}. Context window ${windowSize(id)} tokens.`+(isThinkingModel(id)?` Thinking is ${cfg.think?'ON':'OFF'} (/think to toggle).`:'')+' Type a prompt below.'}catch(err){engine=null;active=null;$('active').textContent='none';status('LOAD FAILED');add('error','Model failed to load: '+fmt(err.message)+'. Try a smaller model, verify WebGPU, and ensure there is enough free GPU memory.')}finally{lsp.done();progress.remove();loading=false;controls();foot();input.focus()}}
 
+// ---------- saved chats (IndexedDB, this browser only) ----------
+const CHATS={db:null,open(){return this.db||(this.db=new Promise((ok,no)=>{const r=indexedDB.open('ldb-terminal',1);r.onupgradeneeded=()=>r.result.createObjectStore('chats',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}))},
+ async run(mode,fn){const db=await this.open();return new Promise((ok,no)=>{const t=db.transaction('chats',mode),req=fn(t.objectStore('chats'));t.oncomplete=()=>ok(req.result);t.onerror=()=>no(t.error)})},
+ put(c){return this.run('readwrite',s=>s.put(c))},all(){return this.run('readonly',s=>s.getAll())},del(id){return this.run('readwrite',s=>s.delete(id))},clear(){return this.run('readwrite',s=>s.clear())}};
+let chatId=null,chatSig='',chatCreated=0;
+const sigOf=()=>messages.length+':'+(messages[messages.length-1]?.content||'').length;
+function newChat(){chatId=null;chatSig='';chatCreated=0}
+async function persistChat(){if(!messages.length||sigOf()===chatSig)return;chatSig=sigOf();
+ if(!chatId){chatId=Date.now().toString(36)+Math.random().toString(36).slice(2,6);chatCreated=Date.now()}
+ const first=(messages.find(m=>m.role==='user')?.content||'Chat').replace(/\n\(attached:[^)]*\)$/,'').replace(/\s+/g,' ').trim();
+ try{await CHATS.put({id:chatId,title:first.length>70?first.slice(0,68)+'…':first,created:chatCreated,updated:Date.now(),model:active,messages:messages.slice()})}catch{}}
+setInterval(()=>{if(!busy)void persistChat()},2000);
+const when=t=>new Date(t).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+async function historyCmd(args){let list=[];try{list=(await CHATS.all()).sort((a,b)=>b.updated-a.updated)}catch(e){add('error','Saved chats are unavailable in this browser ('+fmt(e.message)+').');return}
+ let [sub,arg]=args.map(a=>String(a).toLowerCase());if(/^\d+$/.test(sub||'')){arg=sub;sub='open'}
+ if(!sub){if(!list.length){add('dim','No saved chats yet. Chats are saved in this browser automatically as you go.');return}
+  add('dim','Saved chats, newest first. /history <number> reopens one · /history delete <number> · /history clear · /new starts a fresh chat\n\n'+list.slice(0,40).map((c,i)=>`${String(i+1).padStart(3)}. ${c.title}\n     ${c.messages.length/2} exchange${c.messages.length===2?'':'s'} · ${when(c.updated)}${c.id===chatId?' · open now':''}`).join('\n'));return}
+ if(sub==='clear'){try{await CHATS.clear()}catch{}newChat();add('dim','Deleted every saved chat from this browser.');return}
+ const c=list[+arg-1];if(!c){add('error','No saved chat with that number. /history lists them.');return}
+ if(sub==='delete'||sub==='rm'){await CHATS.del(c.id);if(c.id===chatId)newChat();add('dim',`Deleted \u201c${c.title}\u201d.`);return}
+ if(sub!=='open'){add('error','Use /history, /history <number>, /history delete <number> or /history clear.');return}
+ if(busy||loading)return;screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=c.messages.slice();files=[];quotes.clear();companies.clear();chatId=c.id;chatCreated=c.created;chatSig=sigOf();foot();
+ add('dim',`Reopened \u201c${c.title}\u201d from ${when(c.created)}${c.model?', answered by '+modelName(c.model):''}. Keep typing to continue it.`);
+ for(const m of messages){if(m.role==='user')add('prompt',m.content);else render(add('assistant',''),m.content)}}
+
+// ---------- cloud mode: large models on Groq with the user's own key (kept in this browser) ----------
+// Groq's API is OpenAI-compatible and allows calls from web pages, so no server is involved. The object below
+// behaves like a WebLLM engine (chat.completions.create, interruptGenerate, reload, unload) so the rest of the
+// terminal works unchanged.
+const GROQ='https://api.groq.com/openai/v1',CLOUD_PREF=['openai/gpt-oss-120b','llama-3.3-70b-versatile','qwen/qwen3-32b','openai/gpt-oss-20b','llama-3.1-8b-instant'];
+let cloudModels=null;
+function cloudEngine(model){let ctl=null;const eng={model,
+ async reload(id){if(!isCloud(id))throw Error('cloud mode is on: /cloud off to use the models on this device');eng.model=id.slice(6)},
+ async unload(){},async interruptGenerate(){ctl?.abort()},
+ chat:{completions:{async create(req){const body={model:eng.model,messages:req.messages,temperature:req.temperature,max_tokens:req.max_tokens,stream:!!req.stream};ctl=new AbortController();
+  const r=await fetch(GROQ+'/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+cfg.keys.groq,'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
+  if(!r.ok){let m='';try{m=(await r.json()).error?.message||''}catch{}throw Error(r.status===401?'Groq refused the key (/key groq NEW_KEY)':r.status===429?'Groq rate limit reached; wait a moment'+(m?' ('+m+')':''):'Groq HTTP '+r.status+(m?': '+m:''))}
+  if(!req.stream)return r.json();
+  const reader=r.body.getReader(),dec=new TextDecoder();
+  return (async function*(){let buf='';try{for(;;){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')return;let j;try{j=JSON.parse(d)}catch{continue}const u=j.usage||j.x_groq?.usage;if(u)j.usage=u;yield j}}}catch(e){if(e.name!=='AbortError')throw e}})()}}}};
+ return eng}
+async function listCloudModels(){const r=await fetch(GROQ+'/models',{headers:{Authorization:'Bearer '+cfg.keys.groq}});if(r.status===401)throw Error('Groq refused the key');if(!r.ok)throw Error('Groq HTTP '+r.status);
+ return (await r.json()).data.filter(m=>m.active!==false&&!/whisper|tts|guard|orpheus|playai|prompt-guard|distil/i.test(m.id)).map(m=>({id:m.id,ctx:m.context_window,by:m.owned_by}))}
+async function cloudOn(quiet){if(!cfg.keys?.groq){add('dim','Cloud mode runs large models (70-120 billion parameters) on Groq, fast on any device, with your own free key:\n  1. Get one at https://console.groq.com/keys\n  2. Type: /key groq YOUR_KEY\nYour messages then go to Groq to be answered; /cloud off keeps everything on this device.');return false}
+ if(busy||loading)return false;
+ try{cloudModels=await listCloudModels()}catch(e){add('error','Cloud mode: '+fmt(e.message)+'.');return false}
+ const ids=cloudModels.map(m=>m.id),model=ids.includes(cfg.cloudModel)?cfg.cloudModel:CLOUD_PREF.find(x=>ids.includes(x))||ids[0];if(!model){add('error','Groq returned no chat models.');return false}
+ if(engine&&!isCloud(active)){try{await engine.unload()}catch{}}
+ engine=cloudEngine(model);active='cloud:'+model;cfg.cloud=true;cfg.cloudModel=model;save();$('active').textContent=modelName(active);$('gpu').textContent='NOT NEEDED';status('READY',true);foot();controls();
+ if(!quiet)add('dim',`Cloud mode ON: ${modelName(active)}. Answers come from Groq (your messages, files and quotes are sent there). /cloud models to switch model · /cloud off to go back to this device.`);return true}
+function cloudOff(){if(isCloud(active)){engine=null;active=null;$('active').textContent='NONE';status('NOT LOADED')}cfg.cloud=false;save();foot();controls();void gpuCheck();add('dim','Cloud mode OFF: everything runs on this device again. Your next question loads a local model.')}
+async function cloudCmd(args){const v=(args[0]||'').toLowerCase();
+ if(v==='off'){cloudOff();return}
+ if(v==='models'||v==='model'){if(!cfg.keys?.groq){await cloudOn();return}if(!cloudModels)try{cloudModels=await listCloudModels()}catch(e){add('error',fmt(e.message));return}
+  const want=args[1];if(want){const m=(/^\d+$/.test(want)?cloudModels[+want-1]:null)||cloudModels.find(m=>m.id===want)||cloudModels.find(m=>m.id.toLowerCase().includes(want.toLowerCase()));if(!m){add('error','No Groq model matches. /cloud models lists them.');return}cfg.cloudModel=m.id;save();if(isCloud(active)){engine.model=m.id;active='cloud:'+m.id;$('active').textContent=modelName(active)}add('dim','Cloud model: '+m.id+(isCloud(active)?'':'. /cloud on to use it.'));return}
+  add('dim','Groq models for your key (use /cloud model <number or name>):\n'+cloudModels.map((m,i)=>`  ${String(i+1).padStart(2)}. ${m.id}${m.ctx?'  · '+Math.round(m.ctx/1024)+'K context':''}${m.by?'  · '+m.by:''}${'cloud:'+m.id===active?'  [IN USE]':''}`).join('\n'));return}
+ if(v==='on'||(!v&&!isCloud(active))){await cloudOn();return}
+ add('dim',isCloud(active)?`Cloud mode is ON (${modelName(active)}). /cloud off to switch back to this device.`:'Cloud mode is OFF.')}
+
+// ---------- first start: the first question loads the best model for this device ----------
+let libReady=null;
+async function bestModel(){const opts=[...modelSelect.options].map(o=>o.value).filter(Boolean);if(!opts.length)return null;
+ if(cfg.model&&opts.includes(cfg.model))return {id:cfg.model,why:'the model you chose before'};
+ const vram=id=>record(id)?.vram_required_MB||1e9,mobile=/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Mac/.test(navigator.platform)),mem=navigator.deviceMemory||8;
+ const budget=mobile?1600:mem<=4?2200:3200;   // MB of GPU memory; laptops with integrated graphics share system memory
+ const fits=id=>vram(id)<=budget,bigFirst=(a,b)=>vram(b)-vram(a);
+ const cached=[];for(const id of opts){try{if(await lib.hasModelInCache(id))cached.push(id)}catch{}}
+ const c=cached.filter(fits).sort(bigFirst);if(c.length)return {id:c[0],why:'already downloaded, so it loads in seconds'};
+ for(const fam of ['Qwen3.5-','Qwen3-','Llama-3.2-','SmolLM2-']){const m=opts.filter(id=>id.startsWith(fam)&&fits(id)).sort(bigFirst);if(m.length)return {id:m[0],why:mobile?'sized for a phone':'the best fit for this device'}}
+ return {id:opts.slice().sort((a,b)=>vram(a)-vram(b))[0],why:'the smallest model'}}
+async function autoLoad(){if(cfg.keys?.groq&&cfg.cloud!==false&&!loading&&!busy&&await cloudOn(true)){add('dim','Using cloud mode ('+modelName(active)+'). /cloud off runs everything on this device instead.');return true}if(loading){add('dim','A model is still loading. Ask again when it says Ready.');return false}if(busy)return false;
+ if(!navigator.gpu){add('error','This browser can\u2019t run the AI models: it has no WebGPU. Use an up-to-date Chrome or Edge on a computer.');return false}
+ if(!lib){add('dim','Getting the model list…');await libReady}if(!lib)return false;
+ const pick=await bestModel();if(!pick){add('error','No model is available. Reload the page to retry.');return false}
+ let id=pick.id;   // graphics without 16-bit float support need the f32 build of the same model
+ try{const a=await navigator.gpu.requestAdapter();const f32=id.replace('q4f16_1','q4f32_1');if(a&&!a.features.has('shader-f16')&&f32!==id&&record(f32)){if(![...modelSelect.options].some(o=>o.value===f32)){const o=document.createElement('option');o.value=f32;o.textContent=modelName(id)+' (f32)';modelSelect.appendChild(o)}id=f32}}catch{}
+ modelSelect.value=id;add('dim',`No model is loaded yet, so loading ${modelName(id)} (${pick.why}${gb(id)?'; needs '+gb(id)+' of GPU memory':''}). The first download takes a few minutes and is kept for next time. /models to choose another.`);
+ await loadModel();return !!engine}
 // ---------- files ----------
 const TEXT_EXT=/\.(txt|md|markdown|csv|tsv|json|jsonl|xml|html?|css|js|mjs|ts|tsx|jsx|py|r|sql|sh|bat|ps1|yml|yaml|toml|ini|cfg|log|c|h|cpp|hpp|cs|java|kt|go|rs|rb|php|swift|tex|srt|vtt)$/i;
 async function pdfText(file){const pdfjs=await import(PDFJS);pdfjs.GlobalWorkerOptions.workerSrc=PDFJS_WORKER;const doc=await pdfjs.getDocument({data:await file.arrayBuffer()}).promise;let out=[];for(let i=1;i<=doc.numPages;i++){const page=await doc.getPage(i);const t=await page.getTextContent();out.push(`[page ${i}]\n`+t.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join(''))}return {text:out.join('\n\n'),pages:doc.numPages}}
@@ -216,7 +312,7 @@ function spinner(parent,verb,hint='ctrl+c to stop'){const el=document.createElem
  return {set verb(x){label=x;draw()},set tokens(n){tokens=n},done(){clearInterval(timer);el.remove()}}}
 
 // facts the model cannot know on its own, refreshed every turn: today's date and time, and its limits
-function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing; but when a page's text has been attached (via /read), answer from that text.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker, for example /quote NVDA for Nvidia.')}
+function facts(){const d=new Date(),tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return quoteFacts()+companyFacts()+`Current date and time: ${d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}, ${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})} (${tz}). Use this for any question about today's date or time. You run offline in the user's browser with no internet access: you cannot open links or web pages, or look up live prices, news or anything after your training data. If asked about any of these, say you cannot see it instead of guessing; but when a page's text has been attached (via /read), answer from that text.`+(quotes.size?' The only live data you have are the market quotes listed above, fetched by the terminal; use them exactly as given and mention their time.':' If asked for a stock price, tell the user to type /quote followed by the ticker, for example /quote NVDA for Nvidia.')}
 
 // ---------- rendering the model's Markdown and maths (KaTeX loads on first use) ----------
 const KATEX='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';let katex=null,katexLoading=null;
@@ -240,21 +336,43 @@ function render(el,text){el.innerHTML=md(text);if(!katex&&/\$|\\\(|\\\[/.test(te
 // ---------- live market quotes (/quote): fetched by the page, handed to the model ----------
 const quotes=new Map();
 function money(v){return '$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function quoteFacts(){if(!quotes.size)return '';return 'Live market quotes fetched by the terminal (real data):\n'+[...quotes.values()].map(q=>`- ${q.symbol}${q.name?' ('+q.name+')':''}: ${money(q.price)}, ${q.change>=0?'+':''}${q.change.toFixed(2)} (${q.pct>=0?'+':''}${q.pct.toFixed(2)}%) vs previous close ${money(q.prev)}; day range ${money(q.low)} to ${money(q.high)}; as of ${q.asof} (source ${q.source})`).join('\n')+'\n\n'}
+function quoteFacts(){if(!quotes.size)return '';return 'Live market quotes fetched by the terminal (real data):\n'+[...quotes.values()].map(q=>`- ${q.symbol}${q.name?' ('+q.name+')':''}: ${money(q.price)}, ${q.change>=0?'+':''}${q.change.toFixed(2)} (${q.pct>=0?'+':''}${q.pct.toFixed(2)}%) vs previous close ${money(q.prev)}; ${q.low!=null?`day range ${money(q.low)} to ${money(q.high)}; `:''}${q.mc?`market value ${bigMoney(q.mc)}; `:''}${q.sector?`sector ${q.sector}; `:''}as of ${q.asof} (source ${q.source})`).join('\n')+'\n\n'}
 async function fetchJSON(url){const r=await fetch(url);if(r.status===401||r.status===403)throw Error('the API key was refused');if(r.status===429)throw Error('rate limit reached; wait a minute');if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+// Keyless quotes and company figures come from Parallax on the same site (prices: Nasdaq listings, the largest
+// refreshed from Yahoo about every 15 minutes; companies: SEC EDGAR filings for the ~500 largest US companies).
+const PX=(/github\.io$/.test(location.hostname)?'':'https://ldiazbusquets.github.io')+'/parallax/snap/';let screenP=null;
+const companies=new Map();
+function screener(){return screenP||(screenP=fetch(PX+'screener.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('Parallax data unavailable (HTTP '+r.status+')');return r.json()}).catch(e=>{screenP=null;throw e}))}
+async function pxQuote(sym){const j=await screener(),alt=sym.replace(/[-.]/g,'/');const r=j.data.find(x=>x.s===sym||x.s===alt);if(!r)throw Error('not found among US-listed stocks (check the ticker)');
+ const pct=r.ch??0,prev=r.p/(1+pct/100),at=r.t||j.generated;
+ return {symbol:sym,name:r.n,price:r.p,change:r.p-prev,pct,prev,open:null,high:null,low:null,mc:r.mc,sector:r.sec,asof:new Date(at).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}),source:r.t?'Parallax (Yahoo price)':'Parallax (Nasdaq listing, can lag a day)'}}
+function bigMoney(v){const a=Math.abs(v);return (v<0?'-':'')+'$'+(a>=1e12?(a/1e12).toFixed(2)+' trillion':a>=1e9?(a/1e9).toFixed(2)+' billion':a>=1e6?(a/1e6).toFixed(1)+' million':Math.round(a).toLocaleString('en-US'))}
+function companyFacts(){return companies.size?'Company figures from SEC filings, fetched by the terminal (real data):\n'+[...companies.values()].map(c=>c.text).join('\n\n')+'\n\n':''}
+async function companyCmd(arg){const sym=String(arg||'').trim().toUpperCase().replace(/[^A-Z0-9.\-\/]/g,'');
+ if(!sym){add('dim','Usage: /company NVDA  loads a company\u2019s figures from its SEC filings (revenue, margins, cash flow, balance sheet, insider trades) for the model to explain. Covers the ~500 largest US companies.');return}
+ const line=add('dim',`Loading ${sym} from SEC filings…`);let d;
+ try{const r=await fetch(PX+'co/'+sym.replace(/[^A-Z0-9]/g,'_')+'.json',{cache:'no-cache'});if(r.status===404)throw Error('not covered: the ~500 largest US companies are (check the ticker)');if(!r.ok)throw Error('HTTP '+r.status);d=(await r.json()).data}
+ catch(e){line.className='bodyline error';line.textContent=`${sym}: ${e instanceof TypeError?'the request was blocked or the network is down':e.message}.`;return}
+ const M=d.metrics||{},pick=k=>{const m=M[k];if(!m)return null;if(m.ttm)return {v:m.ttm.val,w:'last 12 months to '+m.ttm.end};const a=m.annual?.[m.annual.length-1];return a?{v:a.val,w:'fiscal year to '+a.end}:null},inst=k=>M[k]?.latest?{v:M[k].latest.val,w:'at '+M[k].latest.end}:null;
+ const rev=pick('revenue'),gp=pick('grossProfit'),oi=pick('operatingIncome'),ni=pick('netIncome'),eps=pick('eps'),ocf=pick('ocf'),capex=pick('capex');
+ const pc=(a,b)=>a&&b&&b.v?(a.v/b.v*100).toFixed(1)+'%':null,an=M.revenue?.annual||[],ra=an[an.length-1],rp=an[an.length-2];
+ const rows=[['Revenue',rev&&`${bigMoney(rev.v)} (${rev.w})`],['Revenue growth, last fiscal year',ra&&rp&&rp.val?((ra.val/rp.val-1)*100).toFixed(1)+'%':null],['Gross margin',pc(gp,rev)],['Operating margin',pc(oi,rev)],['Net income',ni&&`${bigMoney(ni.v)}${pc(ni,rev)?' ('+pc(ni,rev)+' of revenue)':''}`],['Diluted EPS',eps&&'$'+eps.v.toFixed(2)],['Operating cash flow',ocf&&bigMoney(ocf.v)],['Free cash flow',ocf&&capex&&bigMoney(ocf.v-capex.v)],['Cash',inst('cash')&&`${bigMoney(inst('cash').v)} (${inst('cash').w})`],['Long-term debt',inst('debt')&&bigMoney(inst('debt').v)],['Shareholders\u2019 equity',inst('equity')&&bigMoney(inst('equity').v)]].filter(r=>r[1]);
+ const ins=(d.insiders||[]).filter(t=>t.code==='P'||t.code==='S').slice(0,6).map(t=>`${t.date}: ${t.owner}${t.role?' ('+t.role+')':''} ${t.code==='P'?'bought':'sold'} ${t.shares!=null?Math.round(t.shares).toLocaleString('en-US'):'?'} shares${t.price?' at $'+t.price.toFixed(2):''}`);
+ companies.set(sym,{text:`${d.name} (${sym})${d.industry?', '+d.industry:''}:\n`+rows.map(r=>`- ${r[0]}: ${r[1]}`).join('\n')+(ins.length?'\nRecent open-market insider trades (Form 4):\n'+ins.map(x=>'- '+x).join('\n'):'\nNo open-market insider buys or sells in the latest Form 4 filings.')});
+ line.className='bodyline quote';line.innerHTML=`<span class="tk">${esc(d.name)}</span>  ${esc(sym)}${d.industry?' · '+esc(d.industry):''}\n`+rows.map(r=>`<span style="color:var(--t3)">${esc(r[0].padEnd(34))}</span>${esc(r[1])}`).join('\n')+(ins.length?`\n<span style="color:var(--t3)">Insider trades</span>\n`+ins.map(x=>'  '+esc(x)).join('\n'):'')+`\n<span style="color:var(--t3)">Source: SEC EDGAR filings via Parallax · </span><a href="/parallax/#/c/${encodeURIComponent(sym)}" target="_blank" rel="noopener" style="color:var(--mint)">full company page ↗</a>`;
+ add('dim',`The model can now use ${d.name}\u2019s figures until /reset. Try: \u201cIs ${sym} profitable, and is it growing?\u201d`)}
 async function getQuote(sym){const k=cfg.keys||{};
  if(k.finnhub){const q=await fetchJSON(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(k.finnhub)}`);if(!q||!q.t||!q.c)throw Error('no quote for '+sym+' (check the ticker)');let name='';try{const p=await fetchJSON(`https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(sym)}&token=${encodeURIComponent(k.finnhub)}`);name=p&&p.name||''}catch{}
   return {symbol:sym,name,price:q.c,change:q.d??q.c-q.pc,pct:q.dp??(q.c/q.pc-1)*100,prev:q.pc,open:q.o,high:q.h,low:q.l,asof:new Date(q.t*1000).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'}),source:'Finnhub'}}
  if(k.alphavantage){const j=await fetchJSON(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(k.alphavantage)}`);if(j.Note||j.Information)throw Error('Alpha Vantage limit reached (25 requests a day on the free key)');const q=j['Global Quote'];if(!q||!q['05. price'])throw Error('no quote for '+sym+' (check the ticker)');const n=x=>+String(q[x]).replace('%','');
   return {symbol:sym,name:'',price:n('05. price'),change:n('09. change'),pct:n('10. change percent'),prev:n('08. previous close'),open:n('02. open'),high:n('03. high'),low:n('04. low'),asof:'trading day '+q['07. latest trading day'],source:'Alpha Vantage'}}
- throw Error('nokey')}
+ return pxQuote(sym)}
 async function quoteCmd(list){if(!list.length){add('dim','Usage: /quote NVDA  (a ticker is a company\'s stock symbol, e.g. NVDA = Nvidia, AAPL = Apple, TSLA = Tesla; several at once: /quote NVDA AAPL TSLA). '+(quotes.size?'Quotes the model has now: '+[...quotes.keys()].join(', '):''));return}
- if(!cfg.keys?.finnhub&&!cfg.keys?.alphavantage){add('dim','Live quotes need a free market-data key, saved only in this browser:\n  1. Get one at https://finnhub.io/register (free, 60 calls a minute)\n  2. Type: /key finnhub YOUR_KEY\nAlpha Vantage also works: /key alphavantage YOUR_KEY (25 calls a day).');return}
  for(const raw of list.slice(0,8)){const sym=raw.toUpperCase().replace(/[^A-Z0-9.\-]/g,'');if(!sym)continue;const line=add('dim',`Fetching ${sym}…`);
   try{const q=await getQuote(sym);quotes.set(sym,q);const up=q.change>=0;line.className='bodyline quote';
-   line.innerHTML=`<span class="tk">${esc(q.symbol)}</span>${q.name?'  '+esc(q.name):''}  <span class="tk">${money(q.price)}</span>  <span class="${up?'up':'dn'}">${up?'▲ +':'▼ '}${q.change.toFixed(2)} (${up?'+':''}${q.pct.toFixed(2)}%)</span>\n<span class="note" style="color:var(--t3)">open ${money(q.open)} · high ${money(q.high)} · low ${money(q.low)} · prev close ${money(q.prev)} · ${esc(q.asof)} · ${q.source}</span>`}
+   line.innerHTML=`<span class="tk">${esc(q.symbol)}</span>${q.name?'  '+esc(q.name):''}  <span class="tk">${money(q.price)}</span>  <span class="${up?'up':'dn'}">${up?'▲ +':'▼ '}${q.change.toFixed(2)} (${up?'+':''}${q.pct.toFixed(2)}%)</span>\n<span class="note" style="color:var(--t3)">${[q.open!=null&&'open '+money(q.open),q.high!=null&&'high '+money(q.high),q.low!=null&&'low '+money(q.low),'prev close '+money(q.prev),q.mc&&'market value '+bigMoney(q.mc),q.sector&&esc(q.sector),esc(q.asof),q.source].filter(Boolean).join(' · ')}</span>`}
   catch(e){line.className='bodyline error';line.textContent=`${sym}: ${e.message==='nokey'?'no key set':e instanceof TypeError?'the request was blocked or the network is down':e.message}.`}}
- if(quotes.size)add('dim','The model can now use '+(quotes.size>1?'these quotes':'this quote')+' in your questions until /reset.')}
+ if(quotes.size)add('dim','The model can now use '+(quotes.size>1?'these quotes':'this quote')+' in your questions until /reset.'+(cfg.keys?.finnhub||cfg.keys?.alphavantage?'':' Prices come from Parallax (refreshed about every 15 minutes); for real-time prices add a free Finnhub key: /key finnhub YOUR_KEY.'))}
 
 // ---------- maths and logic: ask the model to work it out before answering ----------
 function looksMath(q){return /\d/.test(q)&&/(how much|how many|cost|costs|price|total|sum|percent|%|[+*\/=^]|\d\s*-\s*\d|solve|calculate|compute|ratio|equation|probability|odds|average|more than|less than|times|per cent|interest|return|rate|divided|multiplied|square|root)/i.test(q)||/\b(puzzle|riddle|logic|trick question|prove)\b/i.test(q)}
@@ -420,7 +538,7 @@ async function debateCmd(args){
   busy=false;controls();status(engine?'READY':'NOT LOADED',!!engine);foot();input.focus()}
  add('dim',cancelRequested?'Debate stopped.':'The moderator\'s verdict was added to the conversation, so you can ask follow-up questions about it. Small models argue fluently but can be wrong; check anything that matters.')}
 
-async function ask(question){if(!engine){add('error','No AI model loaded. Type /models, /model <name>, then /load.');return}if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
+async function ask(question){if(!engine&&!(await autoLoad()))return;if(busy||loading)return;busy=true;cancelRequested=false;controls();status('GENERATING',true);
  const win=windowSize(active),thinking=thinks(active);
  // budget: the window, minus the reply, minus the system prompt and question; files take up to 70% of what is left
  const reserve=Math.min(thinking?Math.max(cfg.maxTokens,1536):cfg.maxTokens,Math.floor(win*0.6)),thinkCap=Math.max(400,reserve-450);   // thinking needs room to finish
@@ -430,7 +548,7 @@ async function ask(question){if(!engine){add('error','No AI model loaded. Type /
  const hist=fitHistory(Math.max(0,room));
  const steps=cfg.steps&&!thinking&&looksMath(question)&&!fixDepth;
  if(steps)add('dim','Maths or logic question: asking the model to work it out step by step first (/steps off to stop this).');
- if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote and a ticker (e.g. /quote NVDA for Nvidia) fetches one for it to use.');
+ if(!quotes.size&&/\b(stock|share)s?\b.*\bprice|\bprice of\b|trading at|\bquote\b/i.test(question))add('dim','Tip: the model has no live prices. /quote and a ticker (e.g. /quote NVDA for Nvidia) fetches one for it to use (no key needed); /company NVDA loads its SEC figures.');
  const userContent=fb.text+question+(fb.text?'\n\n(Answer from the attached file text above. Quote the sentence that answers the question and give its page. If the text does not contain the answer, say so plainly.)':'')+(steps?'\n\n(Work this out step by step, showing each step, then give the final answer on its own line starting with "Answer:". If a number or fact needed to answer is missing from the question, say what is missing instead of assuming it.)':'');
  const turn=[...hist.msgs,{role:'user',content:userContent}];turn.unshift({role:'system',content:(cfg.system.trim()?cfg.system.trim()+'\n\n':'')+facts()});
  if(fb.note)add('dim',fb.note);
@@ -467,11 +585,12 @@ function download(filename,data,type){const blob=new Blob([data],{type});const u
 function listModels(){const opts=Array.from(modelSelect.options);let out='Models by family (number · size · GPU memory needed). Load with /model <number>, then /load.\n',fam='';opts.forEach((o,i)=>{const c=catalogEntry(o.value);if(c&&c.f.family!==fam){fam=c.f.family;out+=`\n${fam} (${c.f.maker}): ${c.f.note}\n`}const label=o.textContent.replace(fam+' · ','');out+=`  ${String(i+1).padStart(2)}. ${label}${o.value===active?'  [LOADED]':o.value===modelSelect.value?'  [SELECTED]':''}\n`});return out+'\nRule of thumb: pick one that fits your graphics card with room to spare (on an 8 GB card, up to about 6 GB).'}
 
 function runCommand(raw){const [cmd,...args]=raw.split(/\s+/);const param=args.join(' ');switch(cmd.toLowerCase()){
-case '/help':add('dim','AVAILABLE COMMANDS\n/help              Show commands\n/models            Show models\n/model <name|#>    Select model by name or number (then /load)\n/load              Download and load the selected model\n/status            GPU, model, context and settings\n/think [on|off]    Qwen 3 reasoning before answering (default off)\n/steps [on|off]    Make the model work maths and puzzles out step by step (default on)\n/quote <TICKER…>   Fetch live stock quotes for the model to use\n/key <service> <k> Save a free Finnhub or Alpha Vantage key in this browser\n/tokens <n>        Reply length limit in tokens (now '+cfg.maxTokens+')\n/temp <0-2>        Randomness (now '+cfg.temp+')\n/system [text]     Show or set the system instruction (resets chat)\n/upload            Attach files to the conversation (also drag-drop or paste)\n/read <page>       Read a page from this site (Finance, Lab) into the conversation\n/agent <task>      Agent mode: plans, runs Python and Linux, edits files, checks its work\n/py <code>         Run real Python 3 in your browser\n/run               Run the code block in the last answer\n/sh <command>      Run a command on a real Linux machine in your browser\n/docs <name>       Real Python documentation, e.g. /docs str.split\n/ws [file]         Files in the workspace (shared by Python, the agent and you)\n/autorun [on|off]  Run Python in answers and let the model fix errors (now '+(cfg.autorun?'on':'off')+')\n/compare <m> <q>   Ask the loaded model and model <m> the same question, side by side\n/debate <q>        Three AI agents debate, vote, then a moderator gives a verdict\n/files             List attached files\n/cat <name>        Show the start of an attached file\n/unattach [name]   Remove one or all attached files\n/clear             Clear the screen and the conversation\n/reset             Reset the conversation only\n/export            Download the conversation as JSON\n/stop              Stop generating (or Ctrl+C)\n/cache             Show which models are downloaded\n/purge [name]      Delete a downloaded model from this browser\n/about             About LDB Lab\n\nAnything else is sent to the loaded model.');break;
-case '/models':add('dim',listModels());break;
+case '/help':{let out='Just type a question to chat. Commands by topic (type / to see them as you type):\n',g='';for(const [grp,c,a,d] of CMDS){if(grp!==g){g=grp;out+=`\n${grp.toUpperCase()}\n`}out+=`  ${(c+(a?' '+a:'')).padEnd(26)} ${d}\n`}add('dim',out+'\nKeys: Enter sends · ↑/↓ history · Tab completes a command · Ctrl+C stops · Ctrl+L clears · right-click for a menu.');break}
+case '/models':add('dim',listModels()+(isCloud(active)?'\n\nCloud mode is on: /cloud models lists the Groq models.':'\n\nOr /cloud for large, fast models on Groq with your own key.'));break;
+case '/cloud':void cloudCmd(args);break;
 case '/model':{if(!param){add('dim','Selected: '+(modelSelect.selectedOptions[0]?.textContent||'none'));break}const q=param.toLowerCase(),opts=Array.from(modelSelect.options);const option=(/^\d+$/.test(q)&&opts[+q-1])||opts.find(o=>o.value.toLowerCase()===q)||opts.find(o=>o.textContent.toLowerCase().includes(q)||o.value.toLowerCase().includes(q));if(!option){add('error','No matching model found. Use /models to view choices.');break}modelSelect.value=option.value;cfg.model=option.value;save();foot();add('dim','Selected '+option.textContent+'. Enter /load to download and activate it.');break}
 case '/load':void loadModel();break;
-case '/status':add('dim',`WebGPU: ${$('gpu').textContent}\nActive: ${active||'none'}${active?` (window ${windowSize(active)} tokens)`:''}\nConversation: ${messages.length/2} exchanges, ~${messages.reduce((a,m)=>a+tok(m.content),0)} tokens\nAttached files: ${files.length}\nThinking: ${isThinkingModel(active||modelSelect.value)?(cfg.think?'on':'off'):'not supported by this model'}\nReply limit: ${cfg.maxTokens} tokens · temperature ${cfg.temp}\nLast reply: ${lastStats||'none'}\nStatus: ${$('state').textContent}\nStorage: chat in this tab only; settings and downloaded models in this browser`);break;
+case '/status':add('dim',`WebGPU: ${$('gpu').textContent}\nActive: ${active||'none'}${active?` (window ${windowSize(active)} tokens)`:''}\nConversation: ${messages.length/2} exchanges, ~${messages.reduce((a,m)=>a+tok(m.content),0)} tokens\nAttached files: ${files.length}\nThinking: ${isThinkingModel(active||modelSelect.value)?(cfg.think?'on':'off'):'not supported by this model'}\nReply limit: ${cfg.maxTokens} tokens · temperature ${cfg.temp}\nLast reply: ${lastStats||'none'}\nStatus: ${$('state').textContent}\nStorage: chats, workspace files, settings and downloaded models stay in this browser`);break;
 case '/think':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add('error','Use /think on or /think off.');break}cfg.think=v?v==='on':!cfg.think;save();foot();add('dim',`Thinking ${cfg.think?'ON: Qwen 3 and 3.5 reason first (shown collapsed), then answers. Slower, and needs a bigger /tokens limit.':'OFF: the model answers directly.'}`+(isThinkingModel(active||modelSelect.value)?'':' (Only Qwen 3 models think; this one ignores the setting.)'));break}
 case '/tokens':{const n=+param;if(!param){add('dim','Reply limit: '+cfg.maxTokens+' tokens');break}if(!(n>=64&&n<=8192)){add('error','Use a number from 64 to 8192.');break}cfg.maxTokens=Math.round(n);save();add('dim',`Reply limit set to ${cfg.maxTokens} tokens.`+(active&&n>windowSize(active)*0.6?` This model\u2019s window is ${windowSize(active)}, so at most ${Math.floor(windowSize(active)*0.6)} will be used.`:''));break}
 case '/temp':{const n=+param;if(!param){add('dim','Temperature: '+cfg.temp);break}if(!(n>=0&&n<=2)){add('error','Use a number from 0 to 2.');break}cfg.temp=n;save();add('dim','Temperature set to '+n+'.');break}
@@ -490,23 +609,45 @@ case '/upload':fileInput.click();add('dim','Choose files… (or drag them onto t
 case '/files':add('dim',files.length?files.map((f,i)=>`${i+1}. ${f.name}  ~${f.tokens.toLocaleString()} tokens`).join('\n')+(active?`\nWindow: ${windowSize(active)} tokens; long files are cut to fit.`:''):'No files attached. Use /upload, drag and drop, or paste.');break;
 case '/cat':{const f=files.find(f=>f.name.toLowerCase().includes(param.toLowerCase()))||(!param&&files[0]);if(!f){add('error','No attached file matches. Use /files.');break}add('dim',`── ${f.name} ──\n`+f.text.slice(0,2000)+(f.text.length>2000?`\n… (${(f.text.length-2000).toLocaleString()} more characters)`:''));break}
 case '/unattach':{if(!param){const n=files.length;files=[];add('dim',`Removed ${n} attached file${n===1?'':'s'}.`)}else{const before=files.length;files=files.filter(f=>!f.name.toLowerCase().includes(param.toLowerCase()));add('dim',`Removed ${before-files.length} file(s).`)}foot();break}
-case '/clear':screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=[];files=[];quotes.clear();foot();add('dim','Terminal cleared. Conversation context reset.');break;
-case '/reset':messages=[];files=[];quotes.clear();foot();add('dim','Conversation, attached files and quotes reset.');break;
+case '/clear':void persistChat();screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=[];files=[];quotes.clear();companies.clear();newChat();foot();add('dim','Terminal cleared. New chat started (the last one is saved: /history).');break;
+case '/new':void persistChat();screen.querySelectorAll('.entry').forEach(e=>e.remove());messages=[];files=[];quotes.clear();companies.clear();newChat();foot();add('dim','New chat. The previous one is saved: /history.');break;
+case '/history':void historyCmd(args);break;
+case '/reset':void persistChat();messages=[];files=[];quotes.clear();companies.clear();newChat();foot();add('dim','Conversation, attached files, quotes and company data reset (the chat so far is saved: /history).');break;
 case '/export':download('ldb-lab-chat.json',JSON.stringify({model:active,exportedAt:new Date().toISOString(),system:cfg.system,settings:{think:cfg.think,maxTokens:cfg.maxTokens,temp:cfg.temp},messages},null,2),'application/json');add('dim','Exported the current conversation as JSON.');break;
 case '/stop':void stop();break;
 case '/cache':(async()=>{if(!lib){add('error','Library not loaded.');return}const rows=[];for(const o of modelSelect.options){let c=false;try{c=await lib.hasModelInCache(o.value)}catch{}rows.push(`${c?'[downloaded]':'[ -- ]      '} ${o.textContent}`)}let est='';try{const e=await navigator.storage.estimate();est=`\nBrowser storage used: ${kb(e.usage||0)} of ${kb(e.quota||0)}`}catch{}add('dim',rows.join('\n')+est)})();break;
 case '/purge':(async()=>{if(!lib||busy||loading)return;const opts=Array.from(modelSelect.options);const o=param?opts.find(o=>o.textContent.toLowerCase().includes(param.toLowerCase())||o.value.toLowerCase().includes(param.toLowerCase())):modelSelect.selectedOptions[0];if(!o){add('error','No matching model.');return}if(o.value===active){await engine.unload();engine=null;active=null;$('active').textContent='NONE';status('NOT LOADED')}try{await lib.deleteModelAllInfoInCache(o.value);add('dim',`Deleted ${o.textContent} from this browser.`)}catch(e){add('error','Could not delete: '+fmt(e.message))}})();break;
 case '/quote':void quoteCmd(args);break;
-case '/key':{const [svc,key]=args;if(!svc){const k=cfg.keys||{};add('dim',`Market-data keys saved in this browser: Finnhub ${k.finnhub?'set (…'+k.finnhub.slice(-4)+')':'not set'}, Alpha Vantage ${k.alphavantage?'set (…'+k.alphavantage.slice(-4)+')':'not set'}.\nSet: /key finnhub YOUR_KEY · remove: /key clear`);break}
- if(svc.toLowerCase()==='clear'){cfg.keys={};save();add('dim','Market-data keys removed from this browser.');break}
- const name={finnhub:'finnhub',alphavantage:'alphavantage','alpha':'alphavantage','av':'alphavantage'}[svc.toLowerCase()];if(!name||!key){add('error','Use /key finnhub YOUR_KEY or /key alphavantage YOUR_KEY.');break}
+case '/company':case '/co':void companyCmd(param);break;
+case '/key':{const [svc,key]=args;if(!svc){const k=cfg.keys||{};add('dim',`Keys saved in this browser: Groq ${k.groq?'set (…'+k.groq.slice(-4)+')':'not set'}, Finnhub ${k.finnhub?'set (…'+k.finnhub.slice(-4)+')':'not set'}, Alpha Vantage ${k.alphavantage?'set (…'+k.alphavantage.slice(-4)+')':'not set'}.\nSet: /key groq YOUR_KEY · /key finnhub YOUR_KEY · remove all: /key clear`);break}
+ if(svc.toLowerCase()==='clear'){cfg.keys={};save();if(isCloud(active))cloudOff();add('dim','All keys removed from this browser.');break}
+ const name={finnhub:'finnhub',alphavantage:'alphavantage','alpha':'alphavantage','av':'alphavantage',groq:'groq'}[svc.toLowerCase()];if(!name||!key){add('error','Use /key groq YOUR_KEY (cloud mode), /key finnhub YOUR_KEY or /key alphavantage YOUR_KEY.');break}
  cfg.keys={...(cfg.keys||{}),[name]:key.trim()};save();const last=screen.querySelector('.entry:last-child .promptline');if(last)last.lastChild.textContent=`/key ${svc} ••••${key.slice(-4)}`;history[history.length-1]=`/key ${svc} ••••`;
+ if(name==='groq'){add('dim','Groq key saved in this browser only (never sent anywhere except to api.groq.com). Turning cloud mode on…');cfg.cloud=true;save();void cloudOn();break}
  add('dim',`${name==='finnhub'?'Finnhub':'Alpha Vantage'} key saved in this browser only (never sent anywhere except to ${name==='finnhub'?'finnhub.io':'alphavantage.co'}). Try /quote NVDA (Nvidia).`);break}
 case '/steps':{const v=param.toLowerCase();if(v&&!['on','off'].includes(v)){add('error','Use /steps on or /steps off.');break}cfg.steps=v?v==='on':!cfg.steps;save();add('dim',`Step-by-step for maths and logic questions is ${cfg.steps?'ON':'OFF'}.`);break}
-case '/about':add('dim','LDB-Lab AI Terminal 3.0\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
+case '/about':add('dim','LDB-Lab AI Terminal 3.1\nBuilt for static GitHub Pages hosting. Models run with WebLLM + WebGPU on your own device; nothing you type or attach is sent to a server. Model and library files download from external hosts. This is an AI prompt console, not an operating system shell.');break;
 default:add('error',`Unknown command: ${cmd}. Enter /help.`)
 }}
 $('form').addEventListener('submit',e=>{e.preventDefault();const raw=input.value.trim();if(!raw)return;if(busy||loading)return;input.value='';add('prompt',raw);history.push(raw);historyPos=history.length;if(raw.startsWith('/'))runCommand(raw);else void ask(raw)});
+// ---------- live command suggestions while typing / ----------
+const sugg=$('sugg');let sel=0,shown=[];
+function paintSugg(){const v=input.value;if(!v.startsWith('/')||busy){sugg.classList.remove('open');shown=[];return}
+ const sp=v.indexOf(' '),head=(sp<0?v:v.slice(0,sp)).toLowerCase(),name=ALIASES[head]||head;
+ if(sp>=0){const c=CMDS.find(c=>c[1]===name);if(c&&c[2]){shown=[];sugg.innerHTML=`<div class="hint"><b>${esc(c[1])}</b><i>${esc(c[2])}</i><span>${esc(c[3])}</span></div>`;sugg.classList.add('open')}else sugg.classList.remove('open');return}
+ shown=CMDS.filter(c=>c[1].startsWith(head));if(!shown.length)shown=CMDS.filter(c=>c[1].includes(head.slice(1))||c[3].toLowerCase().includes(head.slice(1)));shown=shown.slice(0,8);
+ if(!shown.length){sugg.classList.remove('open');return}sel=Math.min(sel,shown.length-1);
+ sugg.innerHTML=shown.map((c,i)=>`<div role="option" data-i="${i}" class="${i===sel?'on':''}"><b>${esc(c[1])}</b><i>${esc(c[2])}</i><span>${esc(c[3])}</span></div>`).join('');sugg.classList.add('open')}
+function takeSugg(i){const c=shown[i];if(!c)return;input.value=c[1]+(c[2]?' ':'');sel=0;paintSugg();input.focus()}
+input.addEventListener('input',()=>{sel=0;paintSugg()});
+input.addEventListener('blur',()=>setTimeout(()=>sugg.classList.remove('open'),150));
+sugg.addEventListener('mousedown',e=>{const d=e.target.closest('[data-i]');if(d){e.preventDefault();takeSugg(+d.dataset.i)}});
+input.addEventListener('keydown',e=>{if(!sugg.classList.contains('open')||!shown.length)return;
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();e.stopImmediatePropagation();sel=(sel+(e.key==='ArrowDown'?1:shown.length-1))%shown.length;paintSugg()}
+ else if(e.key==='Tab'){e.preventDefault();e.stopImmediatePropagation();takeSugg(sel)}
+ else if(e.key==='Enter'&&shown[sel]&&!input.value.includes(' ')&&!COMMANDS.includes(input.value.trim().toLowerCase())){if(shown[sel][2]){e.preventDefault();e.stopImmediatePropagation();takeSugg(sel)}else input.value=shown[sel][1]}
+ else if(e.key==='Escape'){sugg.classList.remove('open')}});
+$('form').addEventListener('submit',()=>{sugg.classList.remove('open')});
 input.addEventListener('keydown',e=>{if(e.key==='ArrowUp'){e.preventDefault();if(historyPos>0)input.value=history[--historyPos]||''}if(e.key==='ArrowDown'){e.preventDefault();if(historyPos<history.length)historyPos++;input.value=history[historyPos]||''}
  if(e.key==='Tab'&&input.value.startsWith('/')&&!input.value.includes(' ')){e.preventDefault();const m=COMMANDS.filter(c=>c.startsWith(input.value.toLowerCase()));if(m.length===1)input.value=m[0]+' ';else if(m.length>1)add('dim',m.join('  '))}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='c'&&busy&&input.selectionStart===input.selectionEnd){e.preventDefault();add('dim','^C');void stop()}});
@@ -517,7 +658,7 @@ $('openModels').addEventListener('click',()=>{hideMenu();add('dim',listModels())
 document.addEventListener('contextmenu',e=>{e.preventDefault();context.classList.add('open');context.style.left=Math.min(e.clientX,innerWidth-285)+'px';context.style.top=Math.min(e.clientY,innerHeight-250)+'px'});
 document.addEventListener('click',e=>{if(!context.contains(e.target))hideMenu();if(e.target===screen)input.focus()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')hideMenu()});
-foot();void gpuCheck();void initLibrary();
+foot();void gpuCheck();libReady=initLibrary();if(cfg.keys?.groq&&cfg.cloud)void cloudOn(true).then(ok=>{if(ok)add('dim',`Cloud mode is on (${modelName(active)}). Just type a question. /cloud off runs everything on this device.`)});
 </script>
 </body>
 </html>

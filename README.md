@@ -1,4 +1,4 @@
-# LDB Lab — Command Terminal v2.1
+# LDB Lab — Command Terminal v3.1
 
 Full-window terminal in the LDB Lab style. The ASCII `LDB LAB` banner appears on startup. Local AI uses WebLLM and WebGPU in supported browsers.
 
@@ -6,9 +6,41 @@ Full-window terminal in the LDB Lab style. The ASCII `LDB LAB` banner appears on
 
 Upload `index.html` to the `terminal/` folder of your GitHub Pages `lab` repository, then visit `https://ldiazbusquets.github.io/lab/terminal/` (assuming Pages serves the repository root). Alternatively publish as the root of a separate GitHub Pages repository.
 
+## Getting started
+
+Just type a question. With no model loaded, the terminal picks the best one for the device (one you already downloaded,
+else the largest Qwen 3.5 / Qwen 3 / Llama 3.2 / SmolLM that fits: about 3 GB of GPU memory on a computer, 1.6 GB on a phone
+or 2.2 GB with little system memory; graphics without 16-bit float support get the f32 build), loads it with a progress bar,
+then answers. A model chosen with `/model` is used instead.
+
+## Cloud mode (Groq)
+
+`/key groq YOUR_KEY` (free at console.groq.com/keys) turns on cloud mode: answers come from large models on Groq
+(gpt-oss-120b, Llama 3.3 70B, Qwen3 32B… whatever the key can use; `/cloud models`, `/cloud model <n>`), fast on any device,
+phones included. Groq's API allows calls from web pages, so the browser talks to it directly: no server. The key stays in
+this browser's localStorage and is only sent to api.groq.com. In cloud mode messages, attached files and quotes go to Groq;
+`/cloud off` (or loading a local model) keeps everything on the device again. The cloud engine mimics WebLLM's interface,
+so files, quotes, /agent, /debate and /compare work the same (with /compare and /debate --models limited to cloud ids).
+
+## Saved chats
+
+Every chat is saved in this browser (IndexedDB) as you go. `/history` lists them, `/history 3` reopens one (and you can keep
+going), `/history delete 3`, `/history clear`; `/new` starts a fresh chat. `/clear` and `/reset` also start a new chat. The
+Python workspace (`/ws`) already persists (Pyodide IDBFS).
+
+## Finance
+
+`/quote MSFT NVDA` works without a key: prices come from Parallax on the same site (`/parallax/snap/screener.json`: every US
+listing, the ~600 largest refreshed from Yahoo about every 15 minutes, the rest can lag a day; the source line says which).
+A Finnhub or Alpha Vantage key gives real-time quotes instead. `/company NVDA` loads a company's figures from its SEC filings
+(`/parallax/snap/co/<TICKER>.json`, ~500 largest US companies): revenue (TTM), growth, margins, net income, EPS, cash flow,
+free cash flow, cash, debt, equity and recent open-market insider trades, which the model can then explain.
+
 ## Commands
 
-`/help`, `/read /finance/research.html`, `/compare llama <question>`, `/debate <question>`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
+Type `/` to see commands with descriptions as you type (↑/↓ to choose, Tab to complete). `/help` lists them by topic.
+
+`/new`, `/history`, `/cloud`, `/company NVDA`, `/help`, `/read /finance/research.html`, `/compare llama <question>`, `/debate <question>`, `/quote NVDA AAPL`, `/key finnhub YOUR_KEY`, `/steps on|off`, `/models`, `/model qwen` (or a number), `/load`, `/status`, `/think on|off`, `/tokens 2048`, `/temp 0.7`, `/system your instructions`, `/upload`, `/files`, `/cat name`, `/unattach`, `/reset`, `/clear`, `/stop`, `/export`, `/cache`, `/purge name`, `/about`
 
 Use Enter to submit, up/down arrows for command history, Tab to complete a command, Ctrl+C to stop a reply, Ctrl+L to clear. Right click for a small menu. All ordinary text is sent to the loaded model. Settings (model, thinking, limits, system instruction) are remembered in this browser.
 
@@ -45,12 +77,7 @@ HTTPS, WebGPU-capable graphics hardware and a supported browser. First-time mode
 
 Silver-blue on black, the LDB Lab dark theme: background `#050607`, silver text `#c4ceda` (highlights `#e2e9f1`), muted `#899bad`, blue accent `#7ca9d4`, errors `#d58c91`; Geist Mono and Manrope. The start screen keeps the ASCII banner (in the blue accent). While a model works, a small fast-spinning sphere of silver-blue points sits next to a shimmering verb (Thinking, Writing, …), the elapsed time and the token count; the answer streams with a blinking cursor. Motion is turned off for visitors who ask for reduced motion.
 
-## Ideas not built yet (pinned Nov 2026)
+## Ideas not built yet
 
-1. Cloud mode with the user's own Groq key (large models, fast, works on any laptop or phone); key kept in localStorage, local WebLLM stays the private/offline option.
-2. Saved chats (`/history`) and a workspace that persists between visits (IndexedDB).
-3. Easier first start: a question with no model loaded picks the best model for the device, loads it with a progress bar, then answers.
-4. Banner still says Version 2.1 (it's 3.0).
-5. Grouped `/help` (Chat, Files, Code, Models, Finance) and live suggestions when typing `/`.
-6. Finance tie-ins: keyless `/quote` (the Parallax feed), a command to pull a company's SEC figures.
-7. Phone support (follows from cloud mode).
+- Show which keyless quote rows are stale more prominently; a `/news TICKER` from Parallax's headlines.
+- Phone layout polish now that cloud mode makes phones usable.
